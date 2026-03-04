@@ -1,34 +1,53 @@
 require('module-alias/register');
+
 const mongoose = require('mongoose');
 const { globSync } = require('glob');
 const path = require('path');
 
-// Make sure we are running node 7.6+
-const [major, minor] = process.versions.node.split('.').map(parseFloat);
+// ==========================
+// NODE VERSION CHECK
+// ==========================
+
+const [major] = process.versions.node.split('.').map(Number);
+
 if (major < 20) {
-  console.log('Please upgrade your node.js version at least 20 or greater. 👌\n ');
-  process.exit();
+  console.log('Please upgrade your Node.js version to 20 or higher. 👌');
+  process.exit(1);
 }
 
-// import environmental variables from our variables.env file
+// ==========================
+// LOAD ENV VARIABLES
+// ==========================
+
 require('dotenv').config({ path: '.env' });
 require('dotenv').config({ path: '.env.local' });
 
+
+// ==========================
+// DATABASE CONNECTION
+// ==========================
+
 if (!process.env.DATABASE || typeof process.env.DATABASE !== 'string') {
-  console.error('Missing DATABASE in backend/.env (or backend/.env.local).');
+  console.error('❌ Missing DATABASE in backend/.env or backend/.env.local');
   process.exit(1);
 }
 
 mongoose.connect(process.env.DATABASE);
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+mongoose.connection.on('connected', () => {
+  console.log('✅ MongoDB connected successfully');
+});
 
 mongoose.connection.on('error', (error) => {
   console.log(
-    `1. 🔥 Common Error caused issue → : check your .env file first and add your mongodb url`
+    '🔥 Database connection error → Check your MongoDB URL in .env'
   );
-  console.error(`2. 🚫 Error → : ${error.message}`);
+  console.error(`🚫 Error → ${error.message}`);
 });
+
+// ==========================
+// LOAD ALL MODELS
+// ==========================
 
 const modelsFiles = globSync('./src/models/**/*.js');
 
@@ -36,9 +55,17 @@ for (const filePath of modelsFiles) {
   require(path.resolve(filePath));
 }
 
-// Start our app!
+
+// ==========================
+// START EXPRESS SERVER
+// ==========================
+
 const app = require('./app');
-app.set('port', process.env.PORT || 8888);
-const server = app.listen(app.get('port'), () => {
-  console.log(`Express running → On PORT : ${server.address().port}`);
+
+const PORT = process.env.PORT || 8888;
+
+app.set('port', PORT);
+
+const server = app.listen(PORT, () => {
+  console.log(`🚀 Express running on PORT : ${PORT}`);
 });

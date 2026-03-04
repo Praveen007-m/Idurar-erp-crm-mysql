@@ -29,16 +29,16 @@ const allowedOrigins = [
 const corsOptions = {
   origin: function (origin, callback) {
 
-    // allow requests without origin (like Postman / mobile apps)
+    // allow requests without origin (Postman, mobile apps)
     if (!origin) return callback(null, true);
 
-    // allow listed origins
+    // allow listed domains
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
 
-    // allow all netlify subdomains
-    if (origin.endsWith(".netlify.app")) {
+    // allow ALL Netlify preview / deploy URLs
+    if (origin && origin.endsWith(".netlify.app")) {
       return callback(null, true);
     }
 
@@ -46,11 +46,23 @@ const corsOptions = {
   },
 
   credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+
+  methods: [
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS"
+  ],
+
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization"
+  ]
 };
 
-// apply cors
+// apply cors middleware
 app.use(cors(corsOptions));
 
 // handle preflight requests
@@ -82,7 +94,7 @@ app.use(compression());
 // ROUTES
 // =======================
 
-// authentication
+// authentication routes
 app.use('/api', coreAuthRouter);
 
 // protected core APIs
@@ -91,10 +103,10 @@ app.use('/api', adminAuth.isValidAuthToken, coreApiRouter);
 // ERP APIs
 app.use('/api', adminAuth.isValidAuthToken, erpApiRouter);
 
-// downloads
+// file downloads
 app.use('/download', coreDownloadRouter);
 
-// public APIs
+// public routes
 app.use('/public', corePublicRouter);
 
 
@@ -106,5 +118,8 @@ app.use(errorHandlers.notFound);
 app.use(errorHandlers.productionErrors);
 
 
-// export app
+// =======================
+// EXPORT APP
+// =======================
+
 module.exports = app;
