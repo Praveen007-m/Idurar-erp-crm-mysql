@@ -7,7 +7,7 @@ import successHandler from '@/request/successHandler';
 export const login = async ({ loginData }) => {
   try {
     const response = await axios.post(
-      API_BASE_URL + `login?timestamp=${new Date().getTime()}`,
+      API_BASE_URL + `login/admin?timestamp=${new Date().getTime()}`,
       loginData
     );
 
