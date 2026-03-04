@@ -105,7 +105,7 @@ export const logout = async () => {
 
   try {
     const response = await axios.post(
-      API_BASE_URL + `logout?timestamp=${new Date().getTime()}`
+      API_BASE_URL + `logout`
     );
 
     const { status, data } = response;
