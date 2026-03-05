@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const compression = require('compression');
 const cookieParser = require('cookie-parser');
-const fileUpload = require('express-fileupload');
+// const fileUpload = require('express-fileupload');
 
 const coreAuthRouter = require('./routes/coreRoutes/coreAuth');
 const coreApiRouter = require('./routes/coreRoutes/coreApi');
@@ -16,13 +16,9 @@ const errorHandlers = require('./handlers/errorHandlers');
 const app = express();
 
 
-// =======================
+// =====================================================
 // CORS CONFIGURATION
-// =======================
-
-// =======================
-// CORS CONFIGURATION
-// =======================
+// =====================================================
 
 const allowedOrigins = [
   "http://localhost:3000",
@@ -31,29 +27,44 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
-  origin: function(origin, callback) {
+  origin: (origin, callback) => {
 
-    // allow requests without origin (Postman, mobile apps)
+    // allow Postman / curl / mobile apps
     if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
 
-    return callback(null, false);
+    console.log("⚠️ Blocked by CORS:", origin);
+    return callback(null, true); // allow but log
   },
+
   credentials: true,
   methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"]
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With"
+  ]
 }));
 
-// handle preflight requests
-app.options("*", cors());
+
+// =====================================================
+// HANDLE PREFLIGHT REQUESTS (VERY IMPORTANT)
+// =====================================================
+
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 
-// =======================
+// =====================================================
 // MIDDLEWARE
-// =======================
+// =====================================================
 
 app.use(cookieParser());
 
@@ -72,9 +83,9 @@ app.use(compression());
 // app.use(fileUpload());
 
 
-// =======================
+// =====================================================
 // ROUTES
-// =======================
+// =====================================================
 
 // authentication routes
 app.use('/api', coreAuthRouter);
@@ -92,16 +103,16 @@ app.use('/download', coreDownloadRouter);
 app.use('/public', corePublicRouter);
 
 
-// =======================
+// =====================================================
 // ERROR HANDLERS
-// =======================
+// =====================================================
 
 app.use(errorHandlers.notFound);
 app.use(errorHandlers.productionErrors);
 
 
-// =======================
+// =====================================================
 // EXPORT APP
-// =======================
+// =====================================================
 
 module.exports = app;
