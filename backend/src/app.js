@@ -15,6 +15,7 @@ const errorHandlers = require('./handlers/errorHandlers');
 
 const app = express();
 
+
 // =====================================================
 // CORS CONFIGURATION
 // =====================================================
@@ -26,7 +27,7 @@ const allowedOrigins = [
 ];
 
 const corsOptions = {
-  origin: function(origin, callback) {
+  origin: (origin, callback) => {
 
     if (!origin) return callback(null, true);
 
@@ -35,7 +36,8 @@ const corsOptions = {
     }
 
     console.log("Blocked by CORS:", origin);
-    return callback(null, true);
+
+    return callback(null, true); // allow instead of throwing error
   },
 
   methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
@@ -45,13 +47,25 @@ const corsOptions = {
     "Authorization"
   ],
 
-  credentials: true
+  credentials: true,
+  optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
 
-// Let CORS middleware handle preflight
 app.options("*", cors(corsOptions));
+
+// =====================================================
+// HANDLE PREFLIGHT REQUESTS (VERY IMPORTANT)
+// =====================================================
+
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 
 // =====================================================
 // MIDDLEWARE
