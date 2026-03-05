@@ -20,42 +20,35 @@ const app = express();
 // CORS CONFIGURATION
 // =======================
 
+// =======================
+// CORS CONFIGURATION
+// =======================
+
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
-  "https://idurar-erp.netlify.app",
-  "https://idurar-erp.netlify.app/" // Trailing slash safety
+  "https://idurar-erp.netlify.app"
 ];
 
-const corsOptions = {
-  origin: function (origin, callback) {
+app.use(cors({
+  origin: function(origin, callback) {
 
-    // allow requests with no origin (mobile apps / curl)
+    // allow requests without origin (Postman, mobile apps)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error("CORS not allowed from this origin"));
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
     }
+
+    return callback(null, false);
   },
+  credentials: true,
+  methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"]
+}));
 
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "X-Requested-With",
-    "Accept",
-    "Origin"
-  ],
-  credentials: true
-};
-
-// Enable CORS
-app.use(cors(corsOptions));
-
-// Handle preflight requests
-app.options('*', cors(corsOptions));
+// handle preflight requests
+app.options("*", cors());
 
 
 // =======================
