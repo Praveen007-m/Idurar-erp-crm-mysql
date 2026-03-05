@@ -26,29 +26,33 @@ const allowedOrigins = [
   "https://idurar-erp.netlify.app"
 ];
 
-app.use(cors({
-  origin: (origin, callback) => {
+const corsOptions = {
+  origin: function (origin, callback) {
 
-    // allow Postman / curl / mobile apps
+    // allow requests without origin (Postman, curl, mobile)
     if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
 
-    console.log("⚠️ Blocked by CORS:", origin);
-    return callback(null, true); // allow but log
+    return callback(new Error("Not allowed by CORS"));
   },
 
-  credentials: true,
-  methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+
   allowedHeaders: [
     "Content-Type",
-    "Authorization",
-    "X-Requested-With"
-  ]
-}));
+    "Authorization"
+  ],
 
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+
+app.options("*", cors(corsOptions)); // VERY IMPORTANT
 
 // =====================================================
 // HANDLE PREFLIGHT REQUESTS (VERY IMPORTANT)
