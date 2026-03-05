@@ -23,30 +23,35 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
-  "https://idurar-erp.netlify.app"
+  "https://idurar-erp.netlify.app",
+  "https://idurar-erp.netlify.app/" // Added trailing slash just in case
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
-
-    // allow requests with no origin (mobile apps / postman)
+    // 1. Allow requests with no origin (like mobile apps or Postman)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) {
+    // 2. Check if the origin exists in our allowed list
+    // Tip: .some() is safer if you want to use regex later
+    if (allowedOrigins.indexOf(origin) !== -1) {
       return callback(null, true);
+    } else {
+      return callback(new Error("Not allowed by CORS"));
     }
-
-    return callback(new Error("Not allowed by CORS"));
   },
-  methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"],
-  credentials: true
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  // 3. Expand allowedHeaders to include 'Origin' and 'Accept'
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+  credentials: true,
+  optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
 };
 
+// Use the middleware
 app.use(cors(corsOptions));
 
-// handle preflight requests
-app.options("*", cors(corsOptions));
+// Remove or comment out the manual app.options("*") line to let the middleware handle it
+// app.options("*", cors(corsOptions));
 
 
 // =======================
