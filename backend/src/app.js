@@ -24,22 +24,38 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
   "https://idurar-erp.netlify.app",
-  "https://idurar-erp.netlify.app/" // Added trailing slash just in case
+  "https://idurar-erp.netlify.app/" // Trailing slash safety
 ];
 
 const corsOptions = {
-  origin: true, // This reflects the request origin automatically (Only for debugging!)
+  origin: function (origin, callback) {
+
+    // allow requests with no origin (mobile apps / curl)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS not allowed from this origin"));
+    }
+  },
+
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
-  credentials: true,
-  optionsSuccessStatus: 200
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "Accept",
+    "Origin"
+  ],
+  credentials: true
 };
 
-// Use the middleware
+// Enable CORS
 app.use(cors(corsOptions));
 
-// Remove or comment out the manual app.options("*") line to let the middleware handle it
-// app.options("*", cors(corsOptions));
+// Handle preflight requests
+app.options('*', cors(corsOptions));
 
 
 // =======================
