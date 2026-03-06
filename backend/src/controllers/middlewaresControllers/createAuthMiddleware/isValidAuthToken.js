@@ -1,15 +1,19 @@
 const jwt = require('jsonwebtoken');
-
 const mongoose = require('mongoose');
 
 const isValidAuthToken = async (req, res, next, { userModel, jwtSecret = 'JWT_SECRET' }) => {
+
+  // ✅ allow CORS preflight requests
+  if (req.method === "OPTIONS") {
+    return next();
+  }
+
   try {
     const UserPassword = mongoose.model(userModel + 'Password');
     const User = mongoose.model(userModel);
 
-    // const token = req.cookies[`token_${cloud._id}`];
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Extract the token
+    const token = authHeader && authHeader.split(' ')[1];
 
     if (!token)
       return res.status(401).json({
@@ -38,7 +42,7 @@ const isValidAuthToken = async (req, res, next, { userModel, jwtSecret = 'JWT_SE
       return res.status(401).json({
         success: false,
         result: null,
-        message: "User doens't Exist, authorization denied.",
+        message: "User doesn't Exist, authorization denied.",
         jwtExpired: true,
       });
 
@@ -51,11 +55,12 @@ const isValidAuthToken = async (req, res, next, { userModel, jwtSecret = 'JWT_SE
         message: 'User is already logout try to login, authorization denied.',
         jwtExpired: true,
       });
-    else {
-      const reqUserName = userModel.toLowerCase();
-      req[reqUserName] = user;
-      next();
-    }
+
+    const reqUserName = userModel.toLowerCase();
+    req[reqUserName] = user;
+
+    next();
+
   } catch (error) {
     return res.status(500).json({
       success: false,

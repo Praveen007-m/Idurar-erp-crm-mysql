@@ -7,7 +7,7 @@ import successHandler from '@/request/successHandler';
 export const login = async ({ loginData }) => {
   try {
     const response = await axios.post(
-      API_BASE_URL + `login?timestamp=${new Date().getTime()}`,
+      API_BASE_URL + `login`,
       loginData
     );
 
@@ -20,11 +20,14 @@ export const login = async ({ loginData }) => {
         notifyOnFailed: true,
       }
     );
+
     return data;
+
   } catch (error) {
     return errorHandler(error);
   }
 };
+
 
 export const register = async ({ registerData }) => {
   try {
@@ -39,15 +42,20 @@ export const register = async ({ registerData }) => {
         notifyOnFailed: true,
       }
     );
+
     return data;
+
   } catch (error) {
     return errorHandler(error);
   }
 };
+
 
 export const verify = async ({ userId, emailToken }) => {
   try {
-    const response = await axios.get(API_BASE_URL + `verify/${userId}/${emailToken}`);
+    const response = await axios.get(
+      API_BASE_URL + `verify/${userId}/${emailToken}`
+    );
 
     const { status, data } = response;
 
@@ -58,15 +66,21 @@ export const verify = async ({ userId, emailToken }) => {
         notifyOnFailed: true,
       }
     );
+
     return data;
+
   } catch (error) {
     return errorHandler(error);
   }
 };
+
 
 export const resetPassword = async ({ resetPasswordData }) => {
   try {
-    const response = await axios.post(API_BASE_URL + `resetpassword`, resetPasswordData);
+    const response = await axios.post(
+      API_BASE_URL + `resetpassword`,
+      resetPasswordData
+    );
 
     const { status, data } = response;
 
@@ -77,16 +91,23 @@ export const resetPassword = async ({ resetPasswordData }) => {
         notifyOnFailed: true,
       }
     );
+
     return data;
+
   } catch (error) {
     return errorHandler(error);
   }
 };
+
+
 export const logout = async () => {
   axios.defaults.withCredentials = true;
+
   try {
-    // window.localStorage.clear();
-    const response = await axios.post(API_BASE_URL + `logout?timestamp=${new Date().getTime()}`);
+    const response = await axios.post(
+      API_BASE_URL + `logout`
+    );
+
     const { status, data } = response;
 
     successHandler(
@@ -96,12 +117,10 @@ export const logout = async () => {
         notifyOnFailed: true,
       }
     );
+
     return data;
+
   } catch (error) {
     return errorHandler(error);
   }
 };
-
-//  console.log(
-//    '🚀 Welcome to IDURAR ERP CRM! Did you know that we also offer commercial customization services? Contact us at hello@idurarapp.com for more information.'
-//  );
