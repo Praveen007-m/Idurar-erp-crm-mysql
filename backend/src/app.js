@@ -14,43 +14,21 @@ const erpApiRouter = require('./routes/appRoutes/appApi');
 const errorHandlers = require('./handlers/errorHandlers');
 
 const app = express();
+
 // =====================================================
-// CORS CONFIGURATION
+// CORS CONFIGURATION (ALLOW ALL)
 // =====================================================
 
-const allowedOrigins = [
-  "http://localhost:3000",
-  "http://localhost:5173",
-  "https://idurar-erp.netlify.app"
-];
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
-const corsOptions = {
-  origin: function(origin, callback) {
-
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    console.log("Blocked by CORS:", origin);
-    return callback(null, true);
-  },
-
-  methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
-
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization"
-  ],
-
-  credentials: true
-};
-
-app.use(cors(corsOptions));
-
-// Let CORS middleware handle preflight
-app.options("*", cors(corsOptions));
+// allow preflight
+app.options("*", cors());
 
 // =====================================================
 // MIDDLEWARE
@@ -58,40 +36,42 @@ app.options("*", cors(corsOptions));
 
 app.use(cookieParser());
 
-app.use(express.json({
-  limit: "50mb"
-}));
+app.use(
+  express.json({
+    limit: "50mb",
+  })
+);
 
-app.use(express.urlencoded({
-  extended: true,
-  limit: "50mb"
-}));
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: "50mb",
+  })
+);
 
 app.use(compression());
 
 // optional uploads
 // app.use(fileUpload());
 
-
 // =====================================================
 // ROUTES
 // =====================================================
 
 // authentication routes
-app.use('/api', coreAuthRouter);
+app.use("/api", coreAuthRouter);
 
 // protected core APIs
-app.use('/api', adminAuth.isValidAuthToken, coreApiRouter);
+app.use("/api", adminAuth.isValidAuthToken, coreApiRouter);
 
 // ERP APIs
-app.use('/api', adminAuth.isValidAuthToken, erpApiRouter);
+app.use("/api", adminAuth.isValidAuthToken, erpApiRouter);
 
 // downloads
-app.use('/download', coreDownloadRouter);
+app.use("/download", coreDownloadRouter);
 
 // public routes
-app.use('/public', corePublicRouter);
-
+app.use("/public", corePublicRouter);
 
 // =====================================================
 // ERROR HANDLERS
@@ -99,7 +79,6 @@ app.use('/public', corePublicRouter);
 
 app.use(errorHandlers.notFound);
 app.use(errorHandlers.productionErrors);
-
 
 // =====================================================
 // EXPORT APP
