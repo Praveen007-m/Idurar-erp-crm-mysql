@@ -1,9 +1,8 @@
 /**
  * Backend URL
+ * Reads from Netlify environment variable
  */
-const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_SERVER ||
-  "https://idurar-erp-crm-gyyk.onrender.com";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_SERVER;
 
 /**
  * API URL
