@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   ArrowLeftOutlined,
   RedoOutlined,
@@ -42,6 +42,13 @@ const BOX_BG = '#e9f7f8';
 const BOX_TEXT = '#117a8b';
 const HEADER_BG = 'linear-gradient(90deg, rgba(40,167,171,0.14) 0%, rgba(24,144,255,0.06) 100%)';
 
+const STATUS_COLOR = {
+  pending: "#d9d9d9",      // grey
+  paid: "#52c41a",         // green
+  late: "#faad14",         // yellow
+  overdue: "#ff4d4f"       // red
+};
+
 export default function Repayment() {
   const translate = useLanguage();
   const { moneyFormatter } = useMoney();
@@ -59,6 +66,7 @@ export default function Repayment() {
   const [clientRepayments, setClientRepayments] = useState([]);
   const [repaymentLoading, setRepaymentLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [repayments, setRepayments] = useState([]);
 
   const loadClients = () => {
     dispatch(crud.list({ entity: 'client', options: { page: 1, items: 100 } }));
@@ -66,6 +74,7 @@ export default function Repayment() {
 
   useEffect(() => {
     loadClients();
+    loadRepayments();
   }, []);
 
   const calculateTotalRepayment = (record) => {
@@ -150,6 +159,49 @@ export default function Repayment() {
     }
     setClientRepayments([]);
   };
+
+  const loadRepayments = async () => {
+    const response = await request.list({
+      entity: "repayment",
+      options: { items: 500, page: 1 }
+    });
+
+    if (response?.success) {
+      setRepayments(response.result || []);
+    }
+  };
+
+  const repaymentMap = useMemo(() => {
+    const map = new Map();
+
+    if (!repayments || !Array.isArray(repayments)) return map;
+
+    repayments.forEach((item) => {
+      const clientId = item.client?._id || item.client;
+      const key = `${clientId}-${dayjs(item.date).format("YYYY-MM-DD")}`;
+      map.set(key, item.status);
+    });
+
+    return map;
+  }, [repayments]);
+
+  const getPaymentStatus = useCallback((client, date) => {
+    const key = `${client._id}-${date.format("YYYY-MM-DD")}`;
+    const repaymentStatus = repaymentMap.get(key);
+
+    if (repaymentStatus === "paid") return "paid";
+    if (repaymentStatus === "late payment") return "late";
+    
+    // Fallback for not-paid or missing explicit status
+    const today = dayjs().startOf('day');
+    const currentDate = date.startOf('day');
+
+    if (currentDate.isBefore(today)) {
+      return "overdue";
+    }
+
+    return "pending";
+  }, [repaymentMap]);
 
   const openDuesModal = async (client) => {
     setActiveClient(client);
@@ -313,28 +365,37 @@ export default function Repayment() {
                     ) : null}
                   </div>
                   <Space direction="vertical" size={4} style={{ width: '100%', marginTop: 8 }}>
-                    {visible.map((client) => (
-                      <Button
-                        key={`${client._id}-${date.date()}`}
-                        block
-                        size="small"
-                        onClick={() => openDuesModal(client)}
-                        style={{
-                          borderColor: BOX_BORDER,
-                          background: BOX_BG,
-                          color: BOX_TEXT,
-                          textAlign: 'left',
-                          height: 26,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          fontSize: 12,
-                          fontWeight: 500,
-                        }}
-                      >
-                        {client?.name}
-                      </Button>
-                    ))}
+                    {visible.map((client) => {
+                      const status = getPaymentStatus(client, date);
+                      const bgColor = STATUS_COLOR[status];
+                      
+                      const textColor = (status === 'pending' || status === 'late') 
+                        ? 'rgba(0, 0, 0, 0.88)' 
+                        : '#ffffff';
+
+                      return (
+                        <Button
+                          key={`${client._id}-${date.date()}`}
+                          block
+                          size="small"
+                          onClick={() => openDuesModal(client)}
+                          style={{
+                            borderColor: bgColor,
+                            background: bgColor,
+                            color: textColor,
+                            textAlign: "left",
+                            height: 26,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            fontSize: 12,
+                            fontWeight: 500,
+                          }}
+                        >
+                          {client?.name}
+                        </Button>
+                      );
+                    })}
                     {hiddenCount > 0 ? (
                       <Typography.Text style={{ color: BOX_TEXT, fontSize: 12 }}>
                         +{hiddenCount} {translate('more')}
