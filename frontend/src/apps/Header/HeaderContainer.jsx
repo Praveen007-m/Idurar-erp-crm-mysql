@@ -1,10 +1,10 @@
 import { useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import { Avatar, Dropdown, Layout, Badge, Button } from 'antd';
+import { Avatar, Dropdown, Layout, Button } from 'antd';
 
 // import Notifications from '@/components/Notification';
 
-import { LogoutOutlined, ToolOutlined, UserOutlined } from '@ant-design/icons';
+import { LogoutOutlined, ToolOutlined, UserOutlined, MenuOutlined } from '@ant-design/icons';
 
 import { selectCurrentAdmin } from '@/redux/auth/selectors';
 
@@ -13,12 +13,23 @@ import { FILE_BASE_URL } from '@/config/serverApiConfig';
 import useLanguage from '@/locale/useLanguage';
 import useResponsive from '@/hooks/useResponsive';
 
+import { useAppContext } from '@/context/appContext';
+
+import logoIcon from '@/style/images/logo-icon.svg';
+
 export default function HeaderContent() {
   const currentAdmin = useSelector(selectCurrentAdmin);
   const { Header } = Layout;
   const { isMobile } = useResponsive();
 
+  const { state: stateApp, appContextAction } = useAppContext();
+  const { navMenu } = appContextAction;
+
   const translate = useLanguage();
+
+  const handleMenuToggle = () => {
+    navMenu.toggle();
+  };
 
   const ProfileDropdown = () => {
     const navigate = useNavigate();
@@ -84,15 +95,82 @@ export default function HeaderContent() {
     },
   ];
 
+  // Mobile header with hamburger, center logo/title, and avatar
+  if (isMobile) {
+    return (
+      <Header
+        className="mobile-header app-header"
+        style={{
+          padding: '12px 16px',
+          background: '#ffffff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          width: '100%',
+        }}
+      >
+        {/* Left: Hamburger Button */}
+        <div className="header-left">
+          <Button
+            type="text"
+            size="large"
+            onClick={handleMenuToggle}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              padding: '4px 8px',
+              margin: 0,
+            }}
+          >
+            <MenuOutlined style={{ fontSize: 22 }} />
+          </Button>
+        </div>
+
+        {/* Center: Logo + Website Name */}
+        <div className="header-center">
+          <img src={logoIcon} alt="Logo" className="app-logo" />
+          <span className="app-title">Webaac Solutions Finance Management</span>
+        </div>
+
+        {/* Right: User Avatar */}
+        <div className="header-right">
+          <Dropdown
+            menu={{
+              items,
+            }}
+            trigger={['click']}
+            placement="bottomRight"
+          >
+            <Avatar
+              className="last user-profile-avatar"
+              src={currentAdmin?.photo ? FILE_BASE_URL + currentAdmin?.photo : undefined}
+              style={{
+                color: '#f56a00',
+                backgroundColor: currentAdmin?.photo ? 'none' : '#fde3cf',
+                boxShadow: 'rgba(150, 190, 238, 0.35) 0px 0px 10px 2px',
+                cursor: 'pointer',
+              }}
+              size={36}
+            >
+              {currentAdmin?.name?.charAt(0)?.toUpperCase()}
+            </Avatar>
+          </Dropdown>
+        </div>
+      </Header>
+    );
+  }
+
+  // Desktop header (unchanged - avatar on right)
   return (
     <Header
       style={{
-        padding: isMobile ? '12px 16px' : '20px',
+        padding: '20px',
         background: '#ffffff',
         display: 'flex',
-        flexDirection: isMobile ? 'column' : 'row-reverse',
-        justifyContent: isMobile ? 'flex-start' : 'flex-start',
-        gap: isMobile ? '8px' : '15px',
+        flexDirection: 'row-reverse',
+        justifyContent: 'flex-start',
+        gap: '15px',
         alignItems: 'center',
       }}
     >
@@ -104,7 +182,6 @@ export default function HeaderContent() {
         placement="bottomRight"
         stye={{ width: '280px', float: 'right' }}
       >
-        {/* <Badge dot> */}
         <Avatar
           className="last"
           src={currentAdmin?.photo ? FILE_BASE_URL + currentAdmin?.photo : undefined}
@@ -119,7 +196,6 @@ export default function HeaderContent() {
         >
           {currentAdmin?.name?.charAt(0)?.toUpperCase()}
         </Avatar>
-        {/* </Badge> */}
       </Dropdown>
     </Header>
   );
@@ -128,3 +204,4 @@ export default function HeaderContent() {
 //  console.log(
 //    '🚀 Welcome to IDURAR ERP CRM! Did you know that we also offer commercial customization services? Contact us at hello@idurarapp.com for more information.'
 //  );
+

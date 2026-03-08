@@ -166,21 +166,30 @@ const handleStatusChange = async (record, newStatus) => {
             <Row gutter={[24, 24]}>
                 <Col span={24}>
                     <Card loading={isClientLoading}>
-                        <Row gutter={24}>
-                            <Col span={6}>
-                                <Statistic title={translate('Client')} value={client?.name} />
+                        <Row gutter={[16, 16]}>
+                            <Col xs={12} md={6}>
+                                <div className="loan-info-item">
+                                    <small style={{ color: '#8c8c8c', fontSize: '12px', display: 'block' }}>{translate('Client')}</small>
+                                    <h3 style={{ margin: '4px 0 0', fontSize: '16px', wordBreak: 'break-word' }}>{client?.name}</h3>
+                                </div>
                             </Col>
-                            <Col span={6}>
-                                <Statistic
-                                    title={translate('Loan Amount')}
-                                    value={moneyFormatter({ amount: client?.loanAmount })}
-                                />
+                            <Col xs={12} md={6}>
+                                <div className="loan-info-item">
+                                    <small style={{ color: '#8c8c8c', fontSize: '12px', display: 'block' }}>{translate('Loan Amount')}</small>
+                                    <h3 style={{ margin: '4px 0 0', fontSize: '16px' }}>{moneyFormatter({ amount: client?.loanAmount })}</h3>
+                                </div>
                             </Col>
-                            <Col span={6}>
-                                <Statistic title={translate('Interest Rate')} value={`${client?.interestRate}%`} />
+                            <Col xs={12} md={6}>
+                                <div className="loan-info-item">
+                                    <small style={{ color: '#8c8c8c', fontSize: '12px', display: 'block' }}>{translate('Interest Rate')}</small>
+                                    <h3 style={{ margin: '4px 0 0', fontSize: '16px' }}>{client?.interestRate}%</h3>
+                                </div>
                             </Col>
-                            <Col span={6}>
-                                <Statistic title={translate('Term')} value={client?.term} />
+                            <Col xs={12} md={6}>
+                                <div className="loan-info-item">
+                                    <small style={{ color: '#8c8c8c', fontSize: '12px', display: 'block' }}>{translate('Term')}</small>
+                                    <h3 style={{ margin: '4px 0 0', fontSize: '16px' }}>{client?.term}</h3>
+                                </div>
                             </Col>
                         </Row>
                     </Card>

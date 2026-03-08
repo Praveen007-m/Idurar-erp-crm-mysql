@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { Button, Drawer, Layout, Menu } from 'antd';
+import { Layout, Menu } from 'antd';
 
 import { useAppContext } from '@/context/appContext';
 import useLanguage from '@/locale/useLanguage';
@@ -15,7 +15,6 @@ import {
   FileSyncOutlined,
   DashboardOutlined,
   CreditCardOutlined,
-  MenuOutlined,
   ShopOutlined,
   WalletOutlined,
   ReconciliationOutlined,
@@ -26,7 +25,7 @@ const { Sider } = Layout;
 
 export default function Navigation() {
   const { isMobile } = useResponsive();
-  return isMobile ? <MobileSidebar /> : <Sidebar collapsible={false} />;
+  return <Sidebar collapsible={false} isMobile={isMobile} />;
 }
 
 function Sidebar({ collapsible, isMobile = false }) {
@@ -151,114 +150,110 @@ function Sidebar({ collapsible, isMobile = false }) {
     navMenu.collapse();
   };
 
-  return (
-    <Sider
-      collapsible={collapsible}
-      collapsed={collapsible ? isNavMenuClose : collapsible}
-      onCollapse={onCollapse}
-      className="navigation"
-      width={isMobile ? 250 : 256}
-      breakpoint="lg"
-      style={{
-        overflow: 'auto',
-        height: '100vh',
-        position: isMobile ? 'absolute' : 'relative',
-        bottom: '20px',
-        ...(!isMobile && {
-          left: '20px',
-          top: '20px',
-        }),
-      }}
-      theme={'light'}
-    >
-      <div
-        className="logo"
-        onClick={() => {
-          // Navigate based on role - staff goes to /customer, others go to /
-          if (currentAdmin?.role === 'staff') {
-            navigate('/customer');
-          } else {
-            navigate('/');
-          }
-        }}
-        style={{
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-        }}
-      >
-        <img
-          src={logoIcon}
-          alt="Logo"
-          style={{ marginLeft: '0px', height: '40px', width: '40px' }}
-        />
+  // Mobile: collapsedWidth=0 hides completely when collapsed
+  // Desktop: normal behavior
+  const siderWidth = 250;
+  const collapsedWidth = isMobile ? 0 : undefined;
 
-        {!showLogoApp && (
-          <div
-            style={{
-              marginTop: '0',
-              marginLeft: '8px',
-              fontSize: '13px',
-              fontWeight: 700,
-              lineHeight: 1.15,
-              color: '#0f2d52',
-              letterSpacing: '0.2px',
-              maxWidth: '180px',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Webaac Solutions
-            <br />
-            Finance Management
-          </div>
-        )}
-      </div>
-
-      <Menu
-        items={items}
-        mode="inline"
-        theme={'light'}
-        selectedKeys={[currentPath]}
-        style={{
-          width: 256,
-        }}
-      />
-    </Sider>
-  );
-}
-
-function MobileSidebar() {
-  const [visible, setVisible] = useState(false);
-
-  const showDrawer = () => {
-    setVisible(true);
-  };
-
-  const onClose = () => {
-    setVisible(false);
-  };
+  const sidebarOpen = isMobile && !isNavMenuClose;
 
   return (
     <>
-      <Button
-        type="text"
-        size="large"
-        onClick={showDrawer}
-        className="mobile-sidebar-btn"
-        style={{ marginLeft: 25 }}
+      {/* Backdrop overlay - only shows on mobile when sidebar is open */}
+      {sidebarOpen && (
+        <div
+          className="sidebar-overlay"
+          onClick={() => navMenu.collapse()}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'rgba(0,0,0,0.3)',
+            zIndex: 999,
+          }}
+        />
+      )}
+      
+      <Sider
+        collapsible={collapsible}
+        collapsed={isNavMenuClose}
+        onCollapse={onCollapse}
+        className="navigation"
+        width={siderWidth}
+        collapsedWidth={collapsedWidth}
+        breakpoint="md"
+        trigger={null}
+        style={{
+          overflow: 'auto',
+          height: '100vh',
+          position: isMobile ? 'fixed' : 'relative',
+          top: isMobile ? 0 : undefined,
+          bottom: isMobile ? undefined : '20px',
+          left: isMobile ? 0 : '20px',
+          zIndex: isMobile ? 1000 : 100,
+        }}
+        theme={'light'}
       >
-        <MenuOutlined style={{ fontSize: 18 }} />
-      </Button>
+        <div
+          className="logo"
+          onClick={() => {
+            // Navigate based on role - staff goes to /customer, others go to /
+            if (currentAdmin?.role === 'staff') {
+              navigate('/customer');
+            } else {
+              navigate('/');
+            }
+            // Close mobile sidebar when clicking logo
+            if (isMobile && !isNavMenuClose) {
+              navMenu.collapse();
+            }
+          }}
+          style={{
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          <img
+            src={logoIcon}
+            alt="Logo"
+            style={{ marginLeft: '0px', height: '40px', width: '40px' }}
+          />
 
-      <Drawer
-        width={250}
-        placement={'left'}
-        closable={false}
-        onClose={onClose}
-        open={visible}
-      >
-        <Sidebar collapsible={false} isMobile={true} />
-      </Drawer>
+          {!showLogoApp && (
+            <div
+              style={{
+                marginTop: '0',
+                marginLeft: '8px',
+                fontSize: '13px',
+                fontWeight: 700,
+                lineHeight: 1.15,
+                color: '#0f2d52',
+                letterSpacing: '0.2px',
+                maxWidth: '180px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Webaac Solutions
+              <br />
+              Finance Management
+            </div>
+          )}
+        </div>
+
+        <Menu
+          items={items}
+          mode="inline"
+          theme={'light'}
+          selectedKeys={[currentPath]}
+          style={{
+            width: siderWidth,
+          }}
+        />
+      </Sider>
     </>
   );
 }
+

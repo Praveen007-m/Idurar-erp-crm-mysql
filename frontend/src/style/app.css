@@ -1,3 +1,14 @@
+@import './partials/rest.css';
+@import './partials/customAntd.css';
+@import './partials/layout.css';
+@import './partials/core.css';
+@import './partials/auth.css';
+@import './partials/navigation.css';
+@import './partials/header.css';
+@import './partials/sidePanel.css';
+@import './partials/collapseBox.css';
+@import './partials/erp.css';
+
 /* ============================================
    LEGEND CONTAINER RESPONSIVE STYLES
    ============================================ */
@@ -57,7 +68,14 @@
 }
 
 /* ============================================
-   END TABLE RESPONSIVE WRAPPER STYLES
+   LOAN INFO ITEM STYLES
+   ============================================ */
+.loan-info-item {
+  text-align: center;
+}
+
+/* ============================================
+   END LOAN INFO ITEM STYLES
    ============================================ */
 
 /* ============================================
@@ -158,15 +176,3 @@
 /* ============================================
    END GLOBAL RESPONSIVE STYLES
    ============================================ */
-
-@import './partials/rest.css';
-@import './partials/customAntd.css';
-@import './partials/layout.css';
-@import './partials/core.css';
-
-@import './partials/auth.css';
-@import './partials/navigation.css';
-@import './partials/header.css';
-@import './partials/sidePanel.css';
-@import './partials/collapseBox.css';
-@import './partials/erp.css';

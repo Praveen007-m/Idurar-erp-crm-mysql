@@ -2,14 +2,19 @@
   opacity: 0;
   color: #fff;
 }
+
+/* Page Loader - Centered Loading Spinner */
 .centerAbsolute {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 32px;
-  height: 38px;
-  margin-left: -16px;
-  margin-top: -19px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.8);
+  z-index: 9999;
 }
 .whiteBox {
   background: #fff;

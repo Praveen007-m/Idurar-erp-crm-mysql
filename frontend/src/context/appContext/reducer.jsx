@@ -22,6 +22,11 @@ export function contextReducer(state, action) {
         ...state,
         isNavMenuClose: !state.isNavMenuClose,
       };
+    case actionTypes.TOGGLE_NAV_MENU:
+      return {
+        ...state,
+        isNavMenuClose: !state.isNavMenuClose,
+      };
     case actionTypes.CHANGE_APP:
       return {
         ...state,

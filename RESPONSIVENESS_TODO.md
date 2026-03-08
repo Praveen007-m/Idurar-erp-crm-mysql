@@ -98,18 +98,20 @@
 
 ---
 
-## Files Modified:
+## Files Modified (15 files):
 1. frontend/src/style/app.css
-2. frontend/src/style/partials/layout.css
-3. frontend/src/style/partials/navigation.css
-4. frontend/src/layout/DashboardLayout/index.jsx
-5. frontend/src/layout/ErpLayout/index.jsx
-6. frontend/src/apps/ErpApp.jsx
-7. frontend/src/apps/Navigation/NavigationContainer.jsx
-8. frontend/src/apps/Header/HeaderContainer.jsx
-9. frontend/src/modules/DashboardModule/index.jsx
-10. frontend/src/modules/CrudModule/CrudModule.jsx
-11. frontend/src/pages/Repayment/index.jsx
-12. frontend/src/components/TabsContent/TabsContent.jsx
-13. frontend/src/components/DataTable/DataTable.jsx
+2. frontend/src/style/partials/core.css
+3. frontend/src/style/partials/layout.css
+4. frontend/src/style/partials/navigation.css
+5. frontend/src/layout/DashboardLayout/index.jsx
+6. frontend/src/layout/ErpLayout/index.jsx
+7. frontend/src/apps/ErpApp.jsx
+8. frontend/src/apps/Navigation/NavigationContainer.jsx
+9. frontend/src/apps/Header/HeaderContainer.jsx
+10. frontend/src/modules/DashboardModule/index.jsx
+11. frontend/src/modules/CrudModule/CrudModule.jsx
+12. frontend/src/pages/Repayment/index.jsx
+13. frontend/src/pages/Repayment/ClientRepayment.jsx
+14. frontend/src/components/TabsContent/TabsContent.jsx
+15. frontend/src/components/DataTable/DataTable.jsx
 

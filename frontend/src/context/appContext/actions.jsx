@@ -12,6 +12,9 @@ const contextActions = (dispatch) => {
       collapse: () => {
         dispatch({ type: actionTypes.COLLAPSE_NAV_MENU });
       },
+      toggle: () => {
+        dispatch({ type: actionTypes.TOGGLE_NAV_MENU });
+      },
     },
     app: {
       open: (appName) => {
