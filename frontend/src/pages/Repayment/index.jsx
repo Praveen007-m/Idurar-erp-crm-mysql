@@ -363,6 +363,77 @@ const getPaymentStatus = useCallback((client, date) => {
         </Row>
 
         <Card bordered={false} style={{ borderRadius: 12 }}>
+          {/* Legend */}
+          <Row
+            gutter={16}
+            style={{
+              marginBottom: 20,
+              background: "#fafafa",
+              padding: "10px 16px",
+              borderRadius: 6,
+              border: "1px solid #f0f0f0"
+            }}
+          >
+            <Col>
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span
+                  style={{
+                    width: 14,
+                    height: 14,
+                    background: "#52c41a",
+                    borderRadius: 3,
+                    display: "inline-block"
+                  }}
+                />
+                Paid
+              </span>
+            </Col>
+
+            <Col>
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span
+                  style={{
+                    width: 14,
+                    height: 14,
+                    background: "#faad14",
+                    borderRadius: 3,
+                    display: "inline-block"
+                  }}
+                />
+                Pending
+              </span>
+            </Col>
+
+            <Col>
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span
+                  style={{
+                    width: 14,
+                    height: 14,
+                    background: "#ff4d4f",
+                    borderRadius: 3,
+                    display: "inline-block"
+                  }}
+                />
+                Overdue
+              </span>
+            </Col>
+
+            <Col>
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span
+                  style={{
+                    width: 14,
+                    height: 14,
+                    background: "#d9d9d9",
+                    borderRadius: 3,
+                    display: "inline-block"
+                  }}
+                />
+                Defaulted
+              </span>
+            </Col>
+          </Row>
           <Calendar
             value={calendarMonth}
             onPanelChange={(value) => setCalendarMonth(value)}
