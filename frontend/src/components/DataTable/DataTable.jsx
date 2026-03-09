@@ -178,25 +178,27 @@ export default function DataTable({ config, extra = [] }) {
 
   return (
     <>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+        <AddNewItem config={config} />
+      </div>
       <PageHeader
         onBack={() => window.history.back()}
         backIcon={<ArrowLeftOutlined />}
         title={DATATABLE_TITLE}
         ghost={false}
         extra={[
-          <div key="datatable-search-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', width: '100%' }}>
+          <div key="datatable-search-container" style={{ display: 'flex', gap: '8px' }}>
             <Input
-              key={`searchFilterDataTable}`}
+              key={`searchFilterDataTable`}
               onChange={filterTable}
               placeholder={translate('search')}
               allowClear
-              style={{ minWidth: '150px', maxWidth: '250px', width: '100%' }}
+              style={{ minWidth: '150px', maxWidth: '250px' }}
             />
-            <Button onClick={handelDataTableLoad} key={`${uniqueId()}`} icon={<RedoOutlined />}>
+
+            <Button onClick={handelDataTableLoad} icon={<RedoOutlined />}>
               {translate('Refresh')}
             </Button>
-
-            <AddNewItem key={`${uniqueId()}`} config={config} />
           </div>,
         ]}
         style={{

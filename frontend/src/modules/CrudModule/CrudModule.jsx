@@ -87,6 +87,7 @@ function SidePanelTopContent({ config, formElements, withUpload, onCancel }) {
 
 function FixHeaderPanel({ config }) {
   const { crudContextAction } = useCrudContext();
+  const translate = useLanguage();
 
   const { collapsedBox } = crudContextAction;
 
@@ -95,14 +96,27 @@ function FixHeaderPanel({ config }) {
   };
 
   return (
-    <Row gutter={8}>
-      <Col className="gutter-row" xs={20} sm={21}>
-        <SearchItem config={config} />
-      </Col>
-      <Col className="gutter-row" xs={4} sm={3}>
-        <Button onClick={addNewItem} block={true} icon={<PlusOutlined />}></Button>
-      </Col>
-    </Row>
+    <>
+      {/* Add New Client Button ABOVE header */}
+      <Row justify="end" style={{ marginBottom: 16 }}>
+        <Col>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={addNewItem}
+          >
+            {config.ADD_NEW_ENTITY}
+          </Button>
+        </Col>
+      </Row>
+
+      {/* Search + small add button row */}
+      <Row gutter={8}>
+        <Col xs={24} sm={24}>
+          <SearchItem config={config} />
+        </Col>
+      </Row>
+    </>
   );
 }
 
