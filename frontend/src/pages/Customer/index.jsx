@@ -3,7 +3,7 @@ import CustomerForm from '@/forms/CustomerForm';
 import { fields } from './config';
 
 import useLanguage from '@/locale/useLanguage';
-import { HistoryOutlined } from '@ant-design/icons';
+import { HistoryOutlined, EyeOutlined } from '@ant-design/icons';
 
 export default function Customer() {
   const translate = useLanguage();
@@ -33,6 +33,11 @@ export default function Customer() {
   };
 
   const extra = [
+    {
+      label: translate('View'),
+      key: 'view',
+      icon: <EyeOutlined />,
+    },
     {
       label: translate('Repayments'),
       key: 'repayments',

@@ -122,6 +122,9 @@ export default function DataTable({ config, extra = [] }) {
                 case 'delete':
                   handleDelete(record);
                   break;
+                case 'view':
+                  navigate(`/calendar/client/${record._id}`);
+                  break;
                 case 'repayments':
                   navigate(`/repayment/client/${record._id}`);
                   break;
