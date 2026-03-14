@@ -63,7 +63,9 @@ export default function RepaymentForm({ isUpdateForm = false }) {
     originalStatus || status
   );
 
-  const isStatusReadonly = normalizedOriginalStatus === 'paid';
+  const isStatusReadonly =
+  normalizedOriginalStatus === 'paid' ||
+  normalizedOriginalStatus === 'late';
 
   /* ================= FIRST PARTIAL LOGIC ================= */
 
@@ -103,6 +105,11 @@ export default function RepaymentForm({ isUpdateForm = false }) {
         return STATUS_OPTIONS.filter(o =>
           o.value === 'paid'
         );
+
+        case 'late':
+          return STATUS_OPTIONS.filter(o =>
+            o.value === 'late'
+          );
 
       default:
         return STATUS_OPTIONS;
