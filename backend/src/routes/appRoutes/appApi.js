@@ -14,6 +14,15 @@ const Client    = require('@/models/appModels/Client');
 const Admin     = require('@/models/coreModels/Admin');
 const Repayment = require('@/models/appModels/Repayment');
 
+// ── Safe match helper ─────────────────────────────────────────────────────────
+// Handles documents where 'removed' field may or may not exist in MongoDB
+const safeMatch = (extra = {}) => {
+  const base = { $or: [{ removed: false }, { removed: { $exists: false } }] };
+  const extraKeys = Object.keys(extra);
+  if (extraKeys.length === 0) return base;
+  return { $and: [base, extra] };
+};
+
 // =============================
 // ADMIN / STAFF ROUTES
 // =============================

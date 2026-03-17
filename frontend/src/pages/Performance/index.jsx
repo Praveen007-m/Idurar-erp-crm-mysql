@@ -48,7 +48,7 @@ function StaffCard({ staff, rank, moneyFormatter }) {
         position: 'relative',
         overflow: 'visible',
       }}
-      bodyStyle={{ padding: '14px 16px' }}
+      styles={{ body: { padding: '14px 16px' } }}
     >
       {/* Rank badge */}
       <div
@@ -302,7 +302,7 @@ export default function Performance() {
             <Card
               size="small" bordered={false}
               style={{ borderRadius: 10, background: '#f4fbfc', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
-              bodyStyle={{ padding: isMobile ? '12px' : '16px 20px' }}
+              styles={{ body: { padding: isMobile ? '12px' : '16px 20px' } }}
             >
               <Statistic
                 title={<span style={{ fontSize: isMobile ? 11 : 13 }}>Active Staff</span>}
@@ -316,7 +316,7 @@ export default function Performance() {
             <Card
               size="small" bordered={false}
               style={{ borderRadius: 10, background: '#fffbe6', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
-              bodyStyle={{ padding: isMobile ? '12px' : '16px 20px' }}
+              styles={{ body: { padding: isMobile ? '12px' : '16px 20px' } }}
             >
               <Statistic
                 title={<span style={{ fontSize: isMobile ? 11 : 13 }}>Top Performer</span>}
@@ -330,7 +330,7 @@ export default function Performance() {
             <Card
               size="small" bordered={false}
               style={{ borderRadius: 10, background: '#f6ffed', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
-              bodyStyle={{ padding: isMobile ? '12px' : '16px 20px' }}
+              styles={{ body: { padding: isMobile ? '12px' : '16px 20px' } }}
             >
               <Statistic
                 title={<span style={{ fontSize: isMobile ? 11 : 13 }}>Total Collected</span>}
@@ -344,7 +344,7 @@ export default function Performance() {
             <Card
               size="small" bordered={false}
               style={{ borderRadius: 10, background: '#fff1f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
-              bodyStyle={{ padding: isMobile ? '12px' : '16px 20px' }}
+              styles={{ body: { padding: isMobile ? '12px' : '16px 20px' } }}
             >
               <Statistic
                 title={<span style={{ fontSize: isMobile ? 11 : 13 }}>Total Overdue</span>}

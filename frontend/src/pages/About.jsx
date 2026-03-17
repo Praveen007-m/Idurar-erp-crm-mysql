@@ -48,7 +48,7 @@ export default function About() {
             boxShadow:    '0 4px 24px rgba(40,167,171,0.10)',
             border:       `1px solid ${BRAND_COLOR}22`,
           }}
-          bodyStyle={{ padding: isMobile ? '20px 16px' : '36px 32px' }}
+          styles={{ body: { padding: isMobile ? '20px 16px' : '36px 32px' } }}
         >
           {/* ── Logo / Brand ── */}
           <div style={{ textAlign: 'center', marginBottom: 24 }}>
@@ -99,7 +99,7 @@ export default function About() {
               size="small"
               bordered={false}
               style={{ background: '#f4fbfc', borderRadius: 8 }}
-              bodyStyle={{ padding: '12px 16px' }}
+              styles={{ body: { padding: '12px 16px' } }}
             >
               <Space direction="vertical" size={10} style={{ width: '100%' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

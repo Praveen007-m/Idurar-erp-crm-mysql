@@ -141,7 +141,7 @@ export default function Reports() {
                   boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
                   height: '100%',
                 }}
-                bodyStyle={{ padding: isMobile ? '14px 12px' : '20px 16px' }}
+                styles={{ body: { padding: isMobile ? '14px 12px' : '20px 16px' } }}
               >
                 <Statistic
                   title={
@@ -201,7 +201,7 @@ export default function Reports() {
                 dataSource={data.planWise || []}
                 columns={planColumns}
                 pagination={false}
-                rowKey={(_, i) => i}
+                rowKey={(_, i) => String(i)}
                 size="small"
                 scroll={{ x: true }}
               />

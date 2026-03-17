@@ -138,7 +138,7 @@ export default function PerformanceSummary() {
                   background:   card.bg,
                   boxShadow:    '0 1px 4px rgba(0,0,0,0.06)',
                 }}
-                bodyStyle={{ padding: isMobile ? '14px 16px' : '20px' }}
+                styles={{ body: { padding: isMobile ? '14px 16px' : '20px' } }}
               >
                 <Statistic
                   title={
@@ -171,7 +171,7 @@ export default function PerformanceSummary() {
               }
               bordered={false}
               style={{ borderRadius: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', height: '100%' }}
-              bodyStyle={{ padding: isMobile ? '16px' : '24px' }}
+              styles={{ body: { padding: isMobile ? '16px' : '24px' } }}
             >
               <div style={{ textAlign: 'center', padding: isMobile ? '8px 0' : '16px 0' }}>
                 <Progress
@@ -200,7 +200,7 @@ export default function PerformanceSummary() {
               title={translate('Account Actions Breakdown')}
               bordered={false}
               style={{ borderRadius: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', height: '100%' }}
-              bodyStyle={{ padding: isMobile ? '14px' : '24px' }}
+              styles={{ body: { padding: isMobile ? '14px' : '24px' } }}
             >
               <Row gutter={[10, 16]}>
                 {breakdownItems.map((item) => (
@@ -213,7 +213,7 @@ export default function PerformanceSummary() {
                         borderRadius: 8,
                         border:       `1px solid ${item.color}22`,
                       }}
-                      bodyStyle={{ padding: '12px' }}
+                      styles={{ body: { padding: '12px' } }}
                     >
                       <div style={{ color: '#8c8c8c', fontSize: 11, marginBottom: 4 }}>
                         {item.title}
