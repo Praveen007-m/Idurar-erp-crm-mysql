@@ -128,8 +128,8 @@ export default function About() {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <MailOutlined style={{ color: '#1890ff', fontSize: 16 }} />
-                  <a href="mailto:support@webaac.in" style={{ color: '#1890ff' }}>
-                    support@webaac.in
+                  <a href="mailto:hello@webaac.in" style={{ color: '#1890ff' }}>
+                    hello@webaac.in
                   </a>
                 </div>
               </Space>

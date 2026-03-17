@@ -1,12 +1,3 @@
-/**
- * pages/reports/index.jsx — Webaac Solutions Finance Management
- *
- * Mobile fixes:
- *  - Replaced span={6}/span={12} with xs/sm/md responsive props
- *  - Table scroll={{ x: true }} for horizontal scroll on mobile
- *  - Statistic font sizes reduced on small screens
- *  - Padding adjusted for mobile
- */
 import { useEffect, useState } from 'react';
 import {
   Row, Col, Card, Table, Spin, Alert,

@@ -1,22 +1,17 @@
 const mongoose = require('mongoose');
 const Client    = mongoose.model('Client');
 const Repayment = mongoose.model('Repayment');
-const Payment   = mongoose.model('Payment');
 const Admin     = mongoose.model('Admin');
-const getPlanCode        = require('@/utils/getPlanCode');
-const deriveClientStatus = require('@/utils/deriveClientStatus');
+const getPlanCode = require('@/utils/getPlanCode');
 
-/**
- * Build a safe MongoDB match that handles documents where
- * 'removed' field may or may not exist.
- * Uses $and so extra conditions compose safely.
- */
-const safeMatch = (extra = {}) => {
-  const notRemovedClause = { $or: [{ removed: false }, { removed: { $exists: false } }] };
-  const extraKeys = Object.keys(extra);
-  if (extraKeys.length === 0) return notRemovedClause;
-  return { $and: [notRemovedClause, extra] };
-};
+// ── Status constants — MUST match Repayment model enum exactly ────────────────
+// enum: ['paid', 'default', 'late', 'partial', 'not_started']
+const PAID_STATUSES    = ['paid', 'late'];
+const UNPAID_STATUSES  = ['not_started', 'default', 'partial'];
+const OVERDUE_STATUSES = ['default', 'late'];
+
+// removed has default:false so { removed: false } is safe
+const notRemoved = { removed: false };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Admin Dashboard
@@ -30,9 +25,9 @@ const adminDashboard = async (req, res) => {
     const now        = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // ── Customer metrics ──────────────────────────────────────────────────
+    // Customer metrics
     const clientStatusAgg = await Client.aggregate([
-      { $match: safeMatch() },
+      { $match: notRemoved },
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]);
     const customerMetrics = { total: 0, active: 0, completed: 0, defaulted: 0 };
@@ -43,29 +38,29 @@ const adminDashboard = async (req, res) => {
       if (c._id === 'defaulted') customerMetrics.defaulted = c.count;
     });
 
-    // ── Collections ───────────────────────────────────────────────────────
+    // Collections
     const [paymentsAll, paymentsMonth, pendingAll, pendingMonth] = await Promise.all([
       Repayment.aggregate([
-        { $match: safeMatch() },
+        { $match: { ...notRemoved, status: { $in: PAID_STATUSES } } },
         { $group: { _id: null, v: { $sum: '$amountPaid' } } },
       ]),
       Repayment.aggregate([
-        { $match: safeMatch({ date: { $gte: monthStart } }) },
+        { $match: { ...notRemoved, status: { $in: PAID_STATUSES }, paymentDate: { $gte: monthStart } } },
         { $group: { _id: null, v: { $sum: '$amountPaid' } } },
       ]),
       Repayment.aggregate([
-        { $match: safeMatch({ status: { $nin: ['paid', 'late', 'PAID', 'LATE'] } }) },
+        { $match: { ...notRemoved, status: { $in: UNPAID_STATUSES } } },
         { $group: { _id: null, v: { $sum: '$balance' } } },
       ]),
       Repayment.aggregate([
-        { $match: safeMatch({ $and: [{ status: { $nin: ['paid', 'late', 'PAID', 'LATE'] } }, { date: { $gte: monthStart } }] }) },
+        { $match: { ...notRemoved, status: { $in: UNPAID_STATUSES }, date: { $gte: monthStart } } },
         { $group: { _id: null, v: { $sum: '$balance' } } },
       ]),
     ]);
 
-    // ── Status breakdown ──────────────────────────────────────────────────
+    // Status breakdown
     const statusBreak = await Repayment.aggregate([
-      { $match: safeMatch() },
+      { $match: notRemoved },
       { $group: { _id: '$status', count: { $sum: 1 } } },
       { $group: { _id: null, total: { $sum: '$count' }, statuses: { $push: { status: '$_id', count: '$count' } } } },
       {
@@ -84,19 +79,19 @@ const adminDashboard = async (req, res) => {
       },
     ]);
 
-    // ── Plan-wise ─────────────────────────────────────────────────────────
-    const clientsForPlans = await Client.find(safeMatch()).lean();
-    const planWise = {};
-    clientsForPlans.forEach((c) => {
+    // Plan-wise
+    const clientsAll = await Client.find(notRemoved).lean();
+    const planWise   = {};
+    clientsAll.forEach((c) => {
       const plan = getPlanCode(c.repaymentType, c.term);
       if (!planWise[plan]) planWise[plan] = { customerCount: 0 };
       planWise[plan].customerCount += 1;
     });
 
-    // ── Staff-wise ────────────────────────────────────────────────────────
-    const staffClients = await Client.aggregate([
-      { $match: safeMatch({ assigned: { $ne: null } }) },
-      { $group: { _id: '$assigned', customerCount: { $sum: 1 }, clients: { $addToSet: '$_id' } } },
+    // Staff-wise
+    const staffClientGroups = await Client.aggregate([
+      { $match: { ...notRemoved, assigned: { $ne: null } } },
+      { $group: { _id: '$assigned', customerCount: { $sum: 1 }, clientIds: { $addToSet: '$_id' } } },
       {
         $lookup: {
           from: 'admins', localField: '_id', foreignField: '_id', as: 'staff',
@@ -106,14 +101,14 @@ const adminDashboard = async (req, res) => {
     ]);
 
     const staffWise = await Promise.all(
-      staffClients.map(async (s) => {
+      staffClientGroups.map(async (s) => {
         const [collectedAgg, pendingAgg] = await Promise.all([
           Repayment.aggregate([
-            { $match: safeMatch({ client: { $in: s.clients } }) },
+            { $match: { ...notRemoved, client: { $in: s.clientIds }, status: { $in: PAID_STATUSES } } },
             { $group: { _id: null, total: { $sum: '$amountPaid' } } },
           ]),
           Repayment.aggregate([
-            { $match: safeMatch({ $and: [{ client: { $in: s.clients } }, { status: { $nin: ['paid', 'late', 'PAID', 'LATE'] } }] }) },
+            { $match: { ...notRemoved, client: { $in: s.clientIds }, status: { $in: UNPAID_STATUSES } } },
             { $group: { _id: null, total: { $sum: '$balance' } } },
           ]),
         ]);
@@ -153,14 +148,12 @@ const adminDashboard = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 const staffDashboard = async (req, res) => {
   try {
-    const staffId = req.admin._id;
-
+    const staffId    = req.admin._id;
     const now        = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const next7Days  = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-    // ── Clients assigned to this staff ────────────────────────────────────
-    const staffClients = await Client.find(safeMatch({ assigned: staffId })).lean();
+    const staffClients = await Client.find({ ...notRemoved, assigned: staffId }).lean();
     const clientIds    = staffClients.map((c) => c._id);
 
     const customerMetrics = {
@@ -182,47 +175,31 @@ const staffDashboard = async (req, res) => {
       });
     }
 
-    // ── Collections ───────────────────────────────────────────────────────
+    const baseMatch = { ...notRemoved, client: { $in: clientIds } };
+
     const [totalCollectedAgg, monthCollectedAgg, totalPendingAgg, repayStats] = await Promise.all([
       Repayment.aggregate([
-        { $match: safeMatch({ client: { $in: clientIds } }) },
+        { $match: { ...baseMatch, status: { $in: PAID_STATUSES } } },
         { $group: { _id: null, v: { $sum: '$amountPaid' } } },
       ]),
       Repayment.aggregate([
-        { $match: safeMatch({ $and: [{ client: { $in: clientIds } }, { paymentDate: { $gte: monthStart } }] }) },
+        { $match: { ...baseMatch, status: { $in: PAID_STATUSES }, paymentDate: { $gte: monthStart } } },
         { $group: { _id: null, v: { $sum: '$amountPaid' } } },
       ]),
       Repayment.aggregate([
-        { $match: safeMatch({ $and: [{ client: { $in: clientIds } }, { status: { $nin: ['paid', 'late', 'PAID', 'LATE'] } }] }) },
+        { $match: { ...baseMatch, status: { $in: UNPAID_STATUSES } } },
         { $group: { _id: null, v: { $sum: '$balance' } } },
       ]),
+      // Efficiency: amountPaid / amount × 100
       Repayment.aggregate([
-        { $match: safeMatch({ client: { $in: clientIds } }) },
-        {
-          $group: {
-            _id:       null,
-            collected: { $sum: '$amountPaid' },
-            expected:  {
-              $sum: {
-                $ifNull: [
-                  '$amount',
-                  { $add: [{ $ifNull: ['$principal', 0] }, { $ifNull: ['$interest', 0] }] },
-                ],
-              },
-            },
-          },
-        },
+        { $match: baseMatch },
+        { $group: { _id: null, collected: { $sum: '$amountPaid' }, expected: { $sum: '$amount' } } },
       ]),
     ]);
 
-    // ── Installments ──────────────────────────────────────────────────────
     const [overdueCount, upcomingCount] = await Promise.all([
-      Repayment.countDocuments(
-        safeMatch({ $and: [{ client: { $in: clientIds } }, { status: { $in: ['default', 'DEFAULT', 'late', 'LATE'] } }] })
-      ),
-      Repayment.countDocuments(
-        safeMatch({ $and: [{ client: { $in: clientIds } }, { status: { $nin: ['paid', 'late', 'PAID', 'LATE'] } }, { date: { $gte: now, $lte: next7Days } }] })
-      ),
+      Repayment.countDocuments({ ...baseMatch, status: { $in: OVERDUE_STATUSES } }),
+      Repayment.countDocuments({ ...baseMatch, status: { $in: UNPAID_STATUSES }, date: { $gte: now, $lte: next7Days } }),
     ]);
 
     const efficiency =
@@ -260,8 +237,8 @@ const reports = async (req, res) => {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const clientFilter = isAdmin
-      ? safeMatch()
-      : safeMatch({ assigned: staffId });
+      ? notRemoved
+      : { ...notRemoved, assigned: staffId };
 
     const clients   = await Client.find(clientFilter).lean();
     const clientIds = clients.map((c) => c._id);
@@ -277,26 +254,24 @@ const reports = async (req, res) => {
       });
     }
 
-    const baseMatch       = safeMatch({ client: { $in: clientIds } });
-    const paidStatuses    = ['paid', 'late', 'PAID', 'LATE'];
-    const notPaidStatuses = { $nin: paidStatuses };
+    const baseMatch = { ...notRemoved, client: { $in: clientIds } };
 
     const [totalCollectedAgg, monthCollectedAgg, totalPendingAgg, monthPendingAgg, statusBreakAgg] =
       await Promise.all([
         Repayment.aggregate([
-          { $match: baseMatch },
+          { $match: { ...baseMatch, status: { $in: PAID_STATUSES } } },
           { $group: { _id: null, v: { $sum: '$amountPaid' } } },
         ]),
         Repayment.aggregate([
-          { $match: safeMatch({ $and: [{ client: { $in: clientIds } }, { date: { $gte: monthStart } }] }) },
+          { $match: { ...baseMatch, status: { $in: PAID_STATUSES }, paymentDate: { $gte: monthStart } } },
           { $group: { _id: null, v: { $sum: '$amountPaid' } } },
         ]),
         Repayment.aggregate([
-          { $match: safeMatch({ $and: [{ client: { $in: clientIds } }, { status: notPaidStatuses }] }) },
+          { $match: { ...baseMatch, status: { $in: UNPAID_STATUSES } } },
           { $group: { _id: null, v: { $sum: '$balance' } } },
         ]),
         Repayment.aggregate([
-          { $match: safeMatch({ $and: [{ client: { $in: clientIds } }, { status: notPaidStatuses }, { date: { $gte: monthStart } }] }) },
+          { $match: { ...baseMatch, status: { $in: UNPAID_STATUSES }, date: { $gte: monthStart } } },
           { $group: { _id: null, v: { $sum: '$balance' } } },
         ]),
         Repayment.aggregate([

@@ -115,7 +115,6 @@ router.route('/staff/performance')
                   $and: [
                     { $in: ['$status', ['paid', 'late', 'PAID', 'LATE']] },
                     { $gte: ['$paymentDate', monthStart] },
-                    { $lte: ['$paymentDate', monthEnd] },
                   ],
                 },
                 { $ifNull: ['$amountPaid', 0] },

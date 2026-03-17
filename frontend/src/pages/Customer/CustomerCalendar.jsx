@@ -1,13 +1,6 @@
 /**
  * pages/customer/CustomerCalendar.jsx — Webaac Solutions Finance Management
- *
- * Mobile fixes applied:
- *  1. Calendar overflows → mobile switches to week/list view, no horizontal scroll
- *  2. Header (Client/Amount/Term) → stacked cards on xs, clear typography
- *  3. Stats cards (Paid/Pending/Total) → xs={24} stacked, larger tap area
- *  4. Calendar cells → larger min-height on mobile, bigger font
- *  5. Month/Year nav → sticky top bar on mobile with large prev/next buttons
- *  6. Modal → 95vw on mobile, stacked cols
+ * Clicking a calendar entry opens the Edit Repayment form modal.
  */
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -18,18 +11,21 @@ import {
 } from '@ant-design/icons';
 import {
   Avatar, Badge, Button, Calendar, Card, Col, Row,
-  Space, Spin, Tag, Typography, Modal, Grid, Divider,
+  Space, Spin, Tag, Typography, Modal, Form, Grid,
 } from 'antd';
+import { App } from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 import dayjs from 'dayjs';
 import { ErpLayout } from '@/layout';
 import { crud } from '@/redux/crud/actions';
+import { erp } from '@/redux/erp/actions';
 import { selectReadItem } from '@/redux/crud/selectors';
 import { useDispatch, useSelector } from 'react-redux';
 import useLanguage from '@/locale/useLanguage';
 import { useMoney, useDate } from '@/settings';
 import { request } from '@/request';
 import { repaymentStatusColor } from '@/utils/repaymentStatusColor';
+import RepaymentForm from '@/forms/RepaymentForm';
 
 const { useBreakpoint } = Grid;
 
@@ -67,93 +63,56 @@ const LegendDot = ({ color, label }) => (
   </span>
 );
 
-// ── Mobile week list view ─────────────────────────────────────────────────────
+// ── Mobile week list ──────────────────────────────────────────────────────────
 
 function WeekListView({ weekDays, eventsByDate, moneyFormatter, onEventClick }) {
   return (
     <div>
       {weekDays.map((day) => {
-        const key    = day.format('YYYY-MM-DD');
-        const events = eventsByDate[key] || [];
+        const key     = day.format('YYYY-MM-DD');
+        const events  = eventsByDate[key] || [];
         const isToday = day.isSame(dayjs(), 'day');
-
         return (
           <div
             key={key}
             style={{
-              marginBottom: 10,
-              borderRadius: 10,
-              border:       events.length ? `1px solid ${BOX_BORDER}44` : '1px solid #f0f0f0',
-              overflow:     'hidden',
+              marginBottom: 10, borderRadius: 10, overflow: 'hidden',
+              border: events.length ? `1px solid ${BOX_BORDER}44` : '1px solid #f0f0f0',
             }}
           >
-            {/* Day header */}
-            <div
-              style={{
-                background:  isToday ? BOX_BORDER : '#f5f5f5',
-                color:       isToday ? '#fff' : '#595959',
-                padding:     '8px 14px',
-                fontWeight:  600,
-                fontSize:    13,
-                display:     'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
+            <div style={{
+              background: isToday ? BOX_BORDER : '#f5f5f5',
+              color: isToday ? '#fff' : '#595959',
+              padding: '8px 14px', fontWeight: 600, fontSize: 13,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
               <span>{day.format('ddd, DD MMM')}</span>
               {events.length > 0 && (
-                <Badge
-                  count={events.length}
-                  style={{ backgroundColor: isToday ? '#fff' : BOX_BORDER, color: isToday ? BOX_BORDER : '#fff' }}
-                />
+                <Badge count={events.length}
+                  style={{ backgroundColor: isToday ? '#fff' : BOX_BORDER, color: isToday ? BOX_BORDER : '#fff' }} />
               )}
             </div>
-
-            {/* Events */}
             {events.length > 0 ? (
               <div style={{ padding: '8px 12px', background: '#fff' }}>
                 {events.map((event) => (
-                  <div
-                    key={event.id}
-                    onClick={() => onEventClick(event.repayment)}
+                  <div key={event.id} onClick={() => onEventClick(event.repayment)}
                     style={{
-                      display:        'flex',
-                      justifyContent: 'space-between',
-                      alignItems:     'center',
-                      padding:        '10px 12px',
-                      marginBottom:   6,
-                      borderRadius:   8,
-                      background:     `${event.color}18`,
-                      border:         `1px solid ${event.color}55`,
-                      cursor:         'pointer',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '10px 12px', marginBottom: 6, borderRadius: 8, cursor: 'pointer',
+                      background: `${event.color}18`, border: `1px solid ${event.color}55`,
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span
-                        style={{
-                          width: 10, height: 10,
-                          borderRadius: '50%',
-                          background: event.color,
-                          flexShrink: 0,
-                        }}
-                      />
-                      <span style={{ fontWeight: 600, fontSize: 14, color: event.color }}>
-                        {moneyFormatter({ amount: event.repayment.amount })}
-                      </span>
-                    </div>
-                    <Tag
-                      color={event.color}
-                      style={{ borderRadius: 20, fontSize: 11, margin: 0 }}
-                    >
-                      {event.status.replace('-', ' ').toUpperCase()}
+                    <span style={{ fontWeight: 600, fontSize: 14, color: event.color }}>
+                      {moneyFormatter({ amount: event.repayment.amount })}
+                    </span>
+                    <Tag color={event.color} style={{ borderRadius: 20, fontSize: 11, margin: 0 }}>
+                      {event.status.replace(/-|_/g, ' ').toUpperCase()}
                     </Tag>
                   </div>
                 ))}
               </div>
             ) : (
-              <div style={{ padding: '10px 14px', color: '#bfbfbf', fontSize: 13 }}>
-                No repayments
-              </div>
+              <div style={{ padding: '10px 14px', color: '#bfbfbf', fontSize: 13 }}>No repayments</div>
             )}
           </div>
         );
@@ -173,34 +132,35 @@ export default function CustomerCalendar() {
   const dispatch           = useDispatch();
   const screens            = useBreakpoint();
   const isMobile           = !screens.md;
+  const { notification }   = App.useApp();
 
   const { result: client, isLoading: isClientLoading } = useSelector(selectReadItem);
 
-  const [repayments,         setRepayments]         = useState([]);
+  const [repayments,          setRepayments]          = useState([]);
   const [isRepaymentsLoading, setIsRepaymentsLoading] = useState(false);
-  const [calendarMonth,      setCalendarMonth]      = useState(dayjs());
-  const [modalOpen,          setModalOpen]          = useState(false);
-  const [selectedRepayment,  setSelectedRepayment]  = useState(null);
+  const [calendarMonth,       setCalendarMonth]       = useState(dayjs());
+  const [weekStart,           setWeekStart]           = useState(dayjs().startOf('week'));
 
-  // Mobile: current week
-  const [weekStart, setWeekStart] = useState(dayjs().startOf('week'));
+  // ── Edit modal state ──────────────────────────────────────────────────────
+  const [editModalOpen,    setEditModalOpen]    = useState(false);
+  const [editingRepayment, setEditingRepayment] = useState(null);
+  const [submitLoading,    setSubmitLoading]    = useState(false);
+  const [form]                                 = Form.useForm();
+
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => weekStart.add(i, 'day')),
     [weekStart]
   );
 
-  // ── Fetch ────────────────────────────────────────────────────────────────
+  // ── Fetch repayments ──────────────────────────────────────────────────────
   const fetchRepayments = useCallback(async () => {
     setIsRepaymentsLoading(true);
     try {
       const response = await request.get({ entity: `repayment/client/${clientId}` });
       if (response.success) setRepayments(response.result || []);
       else setRepayments([]);
-    } catch {
-      setRepayments([]);
-    } finally {
-      setIsRepaymentsLoading(false);
-    }
+    } catch { setRepayments([]); }
+    finally  { setIsRepaymentsLoading(false); }
   }, [clientId]);
 
   useEffect(() => {
@@ -211,7 +171,7 @@ export default function CustomerCalendar() {
     return () => window.removeEventListener('repayment-updated', handler);
   }, [clientId, fetchRepayments]);
 
-  // ── Calendar events ──────────────────────────────────────────────────────
+  // ── Calendar events ───────────────────────────────────────────────────────
   const calendarEvents = useMemo(() =>
     repayments.map((r) => {
       const status = getDisplayStatus(r);
@@ -222,8 +182,7 @@ export default function CustomerCalendar() {
         repayment: r,
         status,
       };
-    }),
-    [repayments]
+    }), [repayments]
   );
 
   const eventsByDate = useMemo(() => {
@@ -236,7 +195,7 @@ export default function CustomerCalendar() {
     return map;
   }, [calendarEvents]);
 
-  // ── Totals ───────────────────────────────────────────────────────────────
+  // ── Totals ────────────────────────────────────────────────────────────────
   const totals = useMemo(() => {
     const paid = repayments
       .filter((r) => ['paid', 'late'].includes(normalizeStatus(r.status)))
@@ -247,23 +206,89 @@ export default function CustomerCalendar() {
     return { paid, pending, total: paid + pending };
   }, [repayments]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
-  const openRepayment = (repayment) => {
-    setSelectedRepayment(repayment);
-    setModalOpen(true);
-  };
+  // ── Open edit modal ───────────────────────────────────────────────────────
+  const openEditModal = useCallback((repayment) => {
+    if (!repayment) return;
+    setEditingRepayment(repayment);
+    form.setFieldsValue({
+      ...repayment,
+      status:          normalizeStatus(repayment.status),
+      _originalStatus: normalizeStatus(repayment.status),
+      date:            repayment.date        ? dayjs(repayment.date)        : null,
+      paymentDate:     repayment.paymentDate ? dayjs(repayment.paymentDate) : null,
+      amountPaid:      repayment.amountPaid ?? 0,
+    });
+    setEditModalOpen(true);
+  }, [form]);
+
+  const handleCalendarClick = useCallback((repayment) => {
+    openEditModal(repayment);
+  }, [openEditModal]);
 
   const handleDateClick = (date) => {
     const events = eventsByDate[date.format('YYYY-MM-DD')];
-    if (events?.length) openRepayment(events[0].repayment);
+    if (events?.length) openEditModal(events[0].repayment);
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  // ── Format payload for submit ─────────────────────────────────────────────
+  const formatPayload = (values) => ({
+    ...values,
+    amountPaid: (['paid', 'late'].includes(values.status) && !values.amountPaid)
+      ? values.amount : values.amountPaid,
+    date: values.date ? dayjs(values.date).toISOString() : undefined,
+    paymentDate: values.paymentDate
+      ? dayjs(values.paymentDate).toISOString()
+      : (['paid', 'late'].includes(values.status) ? new Date().toISOString() : null),
+  });
+
+  // ── Submit edit ───────────────────────────────────────────────────────────
+  const handleEditOk = async () => {
+    setSubmitLoading(true);
+    try {
+      const values = await form.validateFields();
+
+      const updateResponse = await request.update({
+        entity:   'repayment',
+        id:       editingRepayment._id,
+        jsonData: formatPayload(values),
+      });
+
+      if (!updateResponse?.success || !updateResponse?.result) {
+        notification.error({
+          message:     translate('Update failed'),
+          description: updateResponse?.message || translate('Something went wrong'),
+        });
+        return;
+      }
+
+      // Update local state
+      setRepayments((prev) =>
+        prev.map((r) => r._id === updateResponse.result._id ? { ...r, ...updateResponse.result } : r)
+      );
+
+      window.dispatchEvent(new Event('repayment-updated'));
+      dispatch(erp.list({ entity: 'payment' }));
+
+      notification.success({ message: translate('Repayment updated successfully') });
+      setEditModalOpen(false);
+      form.resetFields();
+    } catch (error) {
+      if (error?.errorFields) return; // form validation — shown inline
+      notification.error({
+        message:     translate('Operation failed'),
+        description: error?.message || translate('Something went wrong'),
+      });
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <ErpLayout>
       <Spin spinning={isClientLoading}>
 
-        {/* ── Page Header ── */}
+        {/* Header */}
         <PageHeader
           onBack={() => navigate('/customer')}
           backIcon={<ArrowLeftOutlined />}
@@ -275,28 +300,18 @@ export default function CustomerCalendar() {
           }
           ghost={false}
           extra={[
-            <Button
-              key="view-list"
-              size={isMobile ? 'small' : 'middle'}
-              onClick={() => navigate(`/repayment/client/${clientId}`)}
-            >
+            <Button key="view-list" size={isMobile ? 'small' : 'middle'}
+              onClick={() => navigate(`/repayment/client/${clientId}`)}>
               {translate('View List')}
             </Button>,
           ]}
-          style={{
-            padding:      isMobile ? '10px 12px' : '18px 14px',
-            borderRadius: 10,
-            background:   HEADER_BG,
-            marginBottom: 12,
-          }}
+          style={{ padding: isMobile ? '10px 12px' : '18px 14px', borderRadius: 10, background: HEADER_BG, marginBottom: 12 }}
         />
 
-        {/* ── Client Info ── */}
-        <Card
-          bordered={false}
-          size="small"
+        {/* Client Info */}
+        <Card bordered={false} size="small"
           style={{ borderRadius: 12, marginBottom: 12 }}
-          bodyStyle={{ padding: isMobile ? '14px 12px' : '16px 20px' }}
+          styles={{ body: { padding: isMobile ? '14px 12px' : '16px 20px' } }}
         >
           <Row gutter={[12, 12]} align="middle">
             <Col xs={24} sm={8}>
@@ -327,18 +342,17 @@ export default function CustomerCalendar() {
           </Row>
         </Card>
 
-        {/* ── Summary Stats ── */}
+        {/* Summary Stats */}
         <Row gutter={[10, 10]} style={{ marginBottom: 12 }}>
           {[
-            { label: translate('Paid'),    value: totals.paid,    color: '#52c41a', bg: '#f6ffed', icon: <CheckCircleOutlined />    },
+            { label: translate('Paid'),    value: totals.paid,    color: '#52c41a', bg: '#f6ffed', icon: <CheckCircleOutlined />      },
             { label: translate('Pending'), value: totals.pending, color: '#fa8c16', bg: '#fff2e8', icon: <ExclamationCircleOutlined /> },
-            { label: translate('Total'),   value: totals.total,   color: '#1890ff', bg: '#e6f7ff', icon: <DollarOutlined />          },
+            { label: translate('Total'),   value: totals.total,   color: '#1890ff', bg: '#e6f7ff', icon: <DollarOutlined />           },
           ].map(({ label, value, color, bg, icon }) => (
             <Col xs={24} sm={8} key={label}>
-              <Card
-                size="small" bordered={false}
+              <Card size="small" bordered={false}
                 style={{ background: bg, borderRadius: 10, border: `1px solid ${color}33` }}
-                bodyStyle={{ padding: isMobile ? '12px 14px' : '14px 18px' }}
+                styles={{ body: { padding: isMobile ? '12px 14px' : '14px 18px' } }}
               >
                 <Space>
                   <span style={{ color, fontSize: isMobile ? 20 : 22 }}>{icon}</span>
@@ -354,11 +368,10 @@ export default function CustomerCalendar() {
           ))}
         </Row>
 
-        {/* ── Legend ── */}
-        <Card
-          bordered={false} size="small"
+        {/* Legend */}
+        <Card bordered={false} size="small"
           style={{ borderRadius: 10, marginBottom: 12 }}
-          bodyStyle={{ padding: '10px 14px' }}
+          styles={{ body: { padding: '10px 14px' } }}
         >
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px' }}>
             <LegendDot color={repaymentStatusColor.paid}           label="Paid"        />
@@ -369,123 +382,86 @@ export default function CustomerCalendar() {
           </div>
         </Card>
 
-        {/* ── Calendar ── */}
-        <Card bordered={false} style={{ borderRadius: 12 }} bodyStyle={{ padding: isMobile ? '12px 10px' : '20px' }}>
+        {/* Calendar */}
+        <Card bordered={false} style={{ borderRadius: 12 }}
+          styles={{ body: { padding: isMobile ? '12px 10px' : '20px' } }}
+        >
           <Spin spinning={isRepaymentsLoading}>
-
             {isMobile ? (
-              /* ── MOBILE: week navigation + list ── */
               <>
-                {/* Week nav bar */}
-                <div
-                  style={{
-                    display:        'flex',
-                    alignItems:     'center',
-                    justifyContent: 'space-between',
-                    marginBottom:   14,
-                    gap:            8,
-                  }}
-                >
-                  <Button
-                    icon={<LeftOutlined />}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 8 }}>
+                  <Button icon={<LeftOutlined />}
                     onClick={() => setWeekStart((p) => p.subtract(1, 'week'))}
-                    style={{ minWidth: 44, minHeight: 44 }}
-                  />
+                    style={{ minWidth: 44, minHeight: 44 }} />
                   <div style={{ textAlign: 'center', flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: BOX_TEXT }}>
                       {weekStart.format('DD MMM')} – {weekStart.add(6, 'day').format('DD MMM YYYY')}
                     </div>
-                    <Button
-                      size="small" type="link"
+                    <Button size="small" type="link"
                       onClick={() => setWeekStart(dayjs().startOf('week'))}
-                      style={{ padding: 0, fontSize: 12 }}
-                    >
+                      style={{ padding: 0, fontSize: 12 }}>
                       Today
                     </Button>
                   </div>
-                  <Button
-                    icon={<RightOutlined />}
+                  <Button icon={<RightOutlined />}
                     onClick={() => setWeekStart((p) => p.add(1, 'week'))}
-                    style={{ minWidth: 44, minHeight: 44 }}
-                  />
+                    style={{ minWidth: 44, minHeight: 44 }} />
                 </div>
-
                 <WeekListView
                   weekDays={weekDays}
                   eventsByDate={eventsByDate}
                   moneyFormatter={moneyFormatter}
-                  onEventClick={openRepayment}
+                  onEventClick={handleCalendarClick}
                 />
               </>
             ) : (
-              /* ── DESKTOP: full calendar ── */
               <Calendar
                 value={calendarMonth}
                 onPanelChange={(v) => setCalendarMonth(v)}
                 onSelect={handleDateClick}
                 fullCellRender={(date) => {
-                  if (!date.isSame(calendarMonth, 'month')) {
+                  if (!date.isSame(calendarMonth, 'month'))
                     return <div style={{ minHeight: 100, padding: 6, background: '#fafafa' }} />;
-                  }
 
-                  const dateKey  = date.format('YYYY-MM-DD');
+                  const dateKey   = date.format('YYYY-MM-DD');
                   const dayEvents = eventsByDate[dateKey] || [];
-                  const visible  = dayEvents.slice(0, 2);
-                  const hidden   = Math.max(dayEvents.length - 2, 0);
-                  const isToday  = date.isSame(dayjs(), 'day');
+                  const visible   = dayEvents.slice(0, 2);
+                  const hidden    = Math.max(dayEvents.length - 2, 0);
+                  const isToday   = date.isSame(dayjs(), 'day');
 
                   return (
                     <div
                       onClick={() => dayEvents.length && handleDateClick(date)}
                       style={{
-                        minHeight:  100,
-                        padding:    6,
-                        borderRadius: 8,
-                        border:     dayEvents.length
-                          ? '1px solid rgba(40,167,171,0.28)'
+                        minHeight: 100, padding: 6, borderRadius: 8,
+                        border: dayEvents.length ? '1px solid rgba(40,167,171,0.28)'
                           : isToday ? `2px solid ${BOX_BORDER}` : '1px solid #f0f0f0',
                         background: dayEvents.length ? '#fcffff' : '#ffffff',
-                        cursor:     dayEvents.length ? 'pointer' : 'default',
+                        cursor: dayEvents.length ? 'pointer' : 'default',
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography.Text
-                          strong
-                          style={{
-                            fontSize: 12,
-                            color: isToday ? BOX_BORDER : undefined,
-                            background: isToday ? `${BOX_BORDER}18` : undefined,
-                            borderRadius: 20,
-                            width: 22, height: 22,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}
-                        >
+                        <Typography.Text strong style={{
+                          fontSize: 12, color: isToday ? BOX_BORDER : undefined,
+                          background: isToday ? `${BOX_BORDER}18` : undefined,
+                          borderRadius: 20, width: 22, height: 22,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
                           {date.date()}
                         </Typography.Text>
                         {dayEvents.length > 0 && (
-                          <Badge
-                            count={dayEvents.length}
-                            style={{ backgroundColor: BOX_BORDER, boxShadow: 'none', fontSize: 10 }}
-                          />
+                          <Badge count={dayEvents.length}
+                            style={{ backgroundColor: BOX_BORDER, boxShadow: 'none', fontSize: 10 }} />
                         )}
                       </div>
                       <Space direction="vertical" size={2} style={{ width: '100%', marginTop: 4 }}>
                         {visible.map((event) => (
-                          <div
-                            key={event.id}
-                            style={{
-                              padding:       '3px 6px',
-                              borderRadius:  4,
-                              background:    event.color,
-                              color:         '#fff',
-                              fontSize:      11,
-                              fontWeight:    500,
-                              overflow:      'hidden',
-                              textOverflow:  'ellipsis',
-                              whiteSpace:    'nowrap',
-                              textAlign:     'center',
-                            }}
-                          >
+                          <div key={event.id} style={{
+                            padding: '3px 6px', borderRadius: 4,
+                            background: event.color, color: '#fff',
+                            fontSize: 11, fontWeight: 500,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center',
+                          }}>
                             {moneyFormatter({ amount: event.repayment.amount })}
                           </div>
                         ))}
@@ -503,71 +479,25 @@ export default function CustomerCalendar() {
           </Spin>
         </Card>
 
-        {/* ── Repayment Detail Modal ── */}
+        {/* ── Edit Repayment Modal ── */}
         <Modal
-          open={modalOpen}
-          onCancel={() => setModalOpen(false)}
-          footer={[
-            <Button key="close" onClick={() => setModalOpen(false)}>
-              {translate('Close')}
-            </Button>,
-            <Button
-              key="view-full" type="primary"
-              onClick={() => { setModalOpen(false); navigate(`/repayment/client/${clientId}`); }}
-            >
-              {translate('View Full Details')}
-            </Button>,
-          ]}
-          width={isMobile ? '95vw' : 520}
-          style={{ top: isMobile ? 20 : 60 }}
-          title={translate('Repayment Details')}
+          title={translate('Edit Repayment')}
+          open={editModalOpen}
+          onOk={handleEditOk}
+          confirmLoading={submitLoading}
+          onCancel={() => {
+            setEditModalOpen(false);
+            setEditingRepayment(null);
+            form.resetFields();
+          }}
+          width={isMobile ? '95vw' : 680}
+          style={{ top: isMobile ? 10 : 24 }}
+          maskClosable={false}
+          destroyOnClose
         >
-          {selectedRepayment && (() => {
-            const status = getDisplayStatus(selectedRepayment);
-            return (
-              <div>
-                {/* Status banner */}
-                <div
-                  style={{
-                    background:   `${repaymentStatusColor[status]}18`,
-                    border:       `1px solid ${repaymentStatusColor[status]}44`,
-                    borderRadius: 8,
-                    padding:      '10px 14px',
-                    marginBottom: 16,
-                    display:      'flex',
-                    justifyContent: 'space-between',
-                    alignItems:   'center',
-                  }}
-                >
-                  <Typography.Text style={{ fontWeight: 600, fontSize: 15 }}>
-                    {moneyFormatter({ amount: selectedRepayment.amount })}
-                  </Typography.Text>
-                  <Tag
-                    color={repaymentStatusColor[status]}
-                    style={{ borderRadius: 20, margin: 0 }}
-                  >
-                    {status.replace('-', ' ').toUpperCase()}
-                  </Tag>
-                </div>
-
-                <Row gutter={[14, 14]}>
-                  {[
-                    { label: translate('Due Date'),  value: dayjs(selectedRepayment.date).format(dateFormat) },
-                    { label: translate('Amount'),    value: moneyFormatter({ amount: selectedRepayment.amount }) },
-                    { label: translate('Principal'), value: moneyFormatter({ amount: selectedRepayment.principal || 0 }) },
-                    { label: translate('Interest'),  value: moneyFormatter({ amount: selectedRepayment.interest  || 0 }) },
-                    { label: translate('Amount Paid'), value: moneyFormatter({ amount: selectedRepayment.amountPaid || 0 }) },
-                    { label: translate('Balance'),   value: moneyFormatter({ amount: selectedRepayment.balance   || 0 }) },
-                  ].map(({ label, value }) => (
-                    <Col xs={12} key={label}>
-                      <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{label}</Typography.Text>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>{value}</div>
-                    </Col>
-                  ))}
-                </Row>
-              </div>
-            );
-          })()}
+          <Form form={form} layout="vertical">
+            <RepaymentForm isUpdateForm={true} />
+          </Form>
         </Modal>
 
       </Spin>
