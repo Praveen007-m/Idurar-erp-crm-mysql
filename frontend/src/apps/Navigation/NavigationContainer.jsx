@@ -96,16 +96,16 @@ function Sidebar({ collapsible, isMobile = false }) {
 
     ...(isAdmin
       ? [
-          {
-            key: 'invoice',
-            icon: <ContainerOutlined />,
-            label: <Link to={'/invoice'}>{translate('invoices')}</Link>,
-          },
-          {
-            key: 'quote',
-            icon: <FileSyncOutlined />,
-            label: <Link to={'/quote'}>{translate('quote')}</Link>,
-          },
+          // {
+          //   key: 'invoice',
+          //   icon: <ContainerOutlined />,
+          //   label: <Link to={'/invoice'}>{translate('invoices')}</Link>,
+          // },
+          // {
+          //   key: 'quote',
+          //   icon: <FileSyncOutlined />,
+          //   label: <Link to={'/quote'}>{translate('quote')}</Link>,
+          // },
           {
             key: 'payment',
             icon: <CreditCardOutlined />,
@@ -116,11 +116,11 @@ function Sidebar({ collapsible, isMobile = false }) {
             label: <Link to={'/payment/mode'}>{translate('payments_mode')}</Link>,
             icon: <WalletOutlined />,
           },
-          {
-            key: 'taxes',
-            label: <Link to={'/taxes'}>{translate('taxes')}</Link>,
-            icon: <ShopOutlined />,
-          },
+          // {
+          //   key: 'taxes',
+          //   label: <Link to={'/taxes'}>{translate('taxes')}</Link>,
+          //   icon: <ShopOutlined />,
+          // },
           {
             key: 'staff',
             icon: <TeamOutlined />,
