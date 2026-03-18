@@ -45,16 +45,16 @@ const adminDashboard = async (req, res) => {
         { $group: { _id: null, v: { $sum: '$amountPaid' } } },
       ]),
       Repayment.aggregate([
-        { $match: { ...notRemoved, status: { $in: PAID_STATUSES }, paymentDate: { $gte: monthStart } } },
+        { $match: { ...notRemoved, status: { $in: PAID_STATUSES }, $or: [{ paidDate: { $gte: monthStart } }, { paidDate: { $gte: monthStart } }] } },
         { $group: { _id: null, v: { $sum: '$amountPaid' } } },
       ]),
       Repayment.aggregate([
         { $match: { ...notRemoved, status: { $in: UNPAID_STATUSES } } },
-        { $group: { _id: null, v: { $sum: '$balance' } } },
+        { $group: { _id: null, v: { $sum: { $subtract: ['$amount', '$amountPaid'] } } } },
       ]),
       Repayment.aggregate([
         { $match: { ...notRemoved, status: { $in: UNPAID_STATUSES }, date: { $gte: monthStart } } },
-        { $group: { _id: null, v: { $sum: '$balance' } } },
+        { $group: { _id: null, v: { $sum: { $subtract: ['$amount', '$amountPaid'] } } } },
       ]),
     ]);
 
@@ -183,12 +183,12 @@ const staffDashboard = async (req, res) => {
         { $group: { _id: null, v: { $sum: '$amountPaid' } } },
       ]),
       Repayment.aggregate([
-        { $match: { ...baseMatch, status: { $in: PAID_STATUSES }, paymentDate: { $gte: monthStart } } },
+        { $match: { ...baseMatch, status: { $in: PAID_STATUSES }, paidDate: { $gte: monthStart } } },
         { $group: { _id: null, v: { $sum: '$amountPaid' } } },
       ]),
       Repayment.aggregate([
         { $match: { ...baseMatch, status: { $in: UNPAID_STATUSES } } },
-        { $group: { _id: null, v: { $sum: '$balance' } } },
+        { $group: { _id: null, v: { $sum: { $subtract: ['$amount', '$amountPaid'] } } } },
       ]),
       // Efficiency: amountPaid / amount × 100
       Repayment.aggregate([
@@ -256,26 +256,33 @@ const reports = async (req, res) => {
 
     const baseMatch = { ...notRemoved, client: { $in: clientIds } };
 
+    // Use lean aggregation with $toString on _id to avoid autopopulate issues
+    const clientIdStrings = clientIds.map(id => id.toString());
+
     const [totalCollectedAgg, monthCollectedAgg, totalPendingAgg, monthPendingAgg, statusBreakAgg] =
       await Promise.all([
         Repayment.aggregate([
-          { $match: { ...baseMatch, status: { $in: PAID_STATUSES } } },
+          { $match: { ...notRemoved, status: { $in: PAID_STATUSES } } },
+          { $match: isAdmin ? {} : { $expr: { $in: [{ $toString: '$client' }, clientIdStrings] } } },
           { $group: { _id: null, v: { $sum: '$amountPaid' } } },
         ]),
         Repayment.aggregate([
-          { $match: { ...baseMatch, status: { $in: PAID_STATUSES }, paymentDate: { $gte: monthStart } } },
+          { $match: { ...notRemoved, status: { $in: PAID_STATUSES }, paidDate: { $gte: monthStart } } },
+          { $match: isAdmin ? {} : { $expr: { $in: [{ $toString: '$client' }, clientIdStrings] } } },
           { $group: { _id: null, v: { $sum: '$amountPaid' } } },
         ]),
         Repayment.aggregate([
-          { $match: { ...baseMatch, status: { $in: UNPAID_STATUSES } } },
+          { $match: { ...notRemoved, status: { $in: UNPAID_STATUSES } } },
+          { $match: isAdmin ? {} : { $expr: { $in: [{ $toString: '$client' }, clientIdStrings] } } },
           { $group: { _id: null, v: { $sum: '$balance' } } },
         ]),
         Repayment.aggregate([
-          { $match: { ...baseMatch, status: { $in: UNPAID_STATUSES }, date: { $gte: monthStart } } },
+          { $match: { ...notRemoved, status: { $in: UNPAID_STATUSES }, date: { $gte: monthStart } } },
+          { $match: isAdmin ? {} : { $expr: { $in: [{ $toString: '$client' }, clientIdStrings] } } },
           { $group: { _id: null, v: { $sum: '$balance' } } },
         ]),
         Repayment.aggregate([
-          { $match: baseMatch },
+          { $match: isAdmin ? notRemoved : { ...notRemoved, $expr: { $in: [{ $toString: '$client' }, clientIdStrings] } } },
           { $group: { _id: '$status', count: { $sum: 1 } } },
           { $group: { _id: null, total: { $sum: '$count' }, statuses: { $push: { status: '$_id', count: '$count' } } } },
           {
