@@ -8,6 +8,7 @@ const { routesList } = require('@/models/utils');
 // Staff/Admin controller
 const adminController = require('@/controllers/appControllers/adminController');
 const checkRole = require('@/middlewares/checkRole');
+const upload   = require('@/middlewares/upload');
 
 // ── Models for staff performance aggregation ──────────────────────────────────
 const Client    = require('@/models/appModels/Client');
@@ -271,7 +272,58 @@ router
 
 routesList.forEach(({ entity, controllerName }) => {
   const controller = appControllers[controllerName];
+  if (!controller) {
+    console.warn(`[appApi] No controller for: ${entity} (${controllerName}) — skipping`);
+    return;
+  }
   routerApp(entity, controller);
 });
+
+
+// =============================
+// COMPANY LOGO UPLOAD
+// =============================
+
+// Company logo upload
+// Uses upload.fields([]) to accept ANY field name without "Unexpected field" error
+router.post('/company_logo',
+  (req, res, next) => {
+    // upload.any() should work but use fields with empty array as fallback
+    const multerAny = upload.any();
+    multerAny(req, res, (err) => {
+      if (err && err.code === 'LIMIT_UNEXPECTED_FILE') {
+        // Try again with no field restrictions
+        req.files = [];
+        return next();
+      }
+      if (err) {
+        console.error('[company_logo] multer error:', err.message);
+        return res.status(500).json({ success: false, message: err.message });
+      }
+      next();
+    });
+  },
+  async (req, res) => {
+    try {
+      // Check both req.files (array) and req.file (single)
+      const file = (req.files && req.files[0]) || req.file;
+
+      if (!file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+
+      const logoUrl = `/uploads/logos/${file.filename}`;
+
+      return res.json({
+        success: true,
+        result:  logoUrl,
+        logo:    logoUrl,
+      });
+    } catch (err) {
+      console.error('[company_logo] error:', err);
+      return res.status(500).json({ success: false, message: err.message || 'Upload failed' });
+    }
+  }
+);
 
 module.exports = router;

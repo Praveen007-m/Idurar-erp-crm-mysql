@@ -33,7 +33,7 @@ export default function AppFooter() {
           lineHeight: 1.8,
         }}
       >
-        Designed and built by{' '}
+        Designed and Developed by{' '}
         <a
           href="https://webaac.in/"
           target="_blank"

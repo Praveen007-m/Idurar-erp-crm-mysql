@@ -74,6 +74,8 @@ app.use(compression());
 // ROUTES
 // =====================================================
 
+app.use("/uploads", express.static("uploads"));
+
 // authentication routes
 app.use("/api", coreAuthRouter);
 

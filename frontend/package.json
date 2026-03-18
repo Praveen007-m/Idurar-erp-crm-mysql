@@ -17,6 +17,7 @@
     "currency.js": "2.0.4",
     "dayjs": "^1.11.10",
     "just-compare": "^2.3.0",
+    "multer": "^2.1.1",
     "react": "^18.3.1",
     "react-dom": "^18.2.0",
     "react-quill": "^2.0.0",

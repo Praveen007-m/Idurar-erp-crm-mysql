@@ -9,14 +9,11 @@ const settingController = require('@/controllers/coreControllers/settingControll
 
 const { singleStorageUpload } = require('@/middlewares/uploadMiddleware');
 
-// //_______________________________ Admin management_______________________________
-
+// Admin management
 router.route('/admin/read/:id').get(catchErrors(adminController.read));
-
 router.route('/admin/password-update/:id').patch(catchErrors(adminController.updatePassword));
 
-//_______________________________ Admin Profile _______________________________
-
+// Admin Profile
 router.route('/admin/profile/password').patch(catchErrors(adminController.updateProfilePassword));
 router
   .route('/admin/profile/update')
@@ -25,12 +22,10 @@ router
     catchErrors(adminController.updateProfile)
   );
 
-// //____________________________________________ API for Global Setting _________________
-
+// Settings API
 router.route('/setting/create').post(catchErrors(settingController.create));
 router.route('/setting/read/:id').get(catchErrors(settingController.read));
 router.route('/setting/update/:id').patch(catchErrors(settingController.update));
-//router.route('/setting/delete/:id).delete(catchErrors(settingController.delete));
 router.route('/setting/search').get(catchErrors(settingController.search));
 router.route('/setting/list').get(catchErrors(settingController.list));
 router.route('/setting/listAll').get(catchErrors(settingController.listAll));
@@ -45,10 +40,16 @@ router
 router
   .route('/setting/upload/:settingKey?')
   .patch(
-    catchErrors(
-      singleStorageUpload({ entity: 'setting', fieldName: 'settingValue', fileType: 'image' })
-    ),
+    // ✅ FIX: uploadFieldName must match the Upload component's name="logo" in AppSettingForm.jsx
+    // Previously hardcoded to 'file' in singleStorageUpload.js → caused "Unexpected field" error
+    singleStorageUpload({
+      entity:          'setting',
+      fieldName:       'settingValue',
+      fileType:        'image',
+      uploadFieldName: 'logo',       // ← matches name="logo" in AppSettingForm.jsx
+    }),
     catchErrors(settingController.updateBySettingKey)
   );
 router.route('/setting/updateManySetting').patch(catchErrors(settingController.updateManySetting));
+
 module.exports = router;
