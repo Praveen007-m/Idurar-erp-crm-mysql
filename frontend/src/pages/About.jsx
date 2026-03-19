@@ -114,7 +114,7 @@ export default function About() {
                   </a>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {/* <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <GithubOutlined style={{ color: '#333', fontSize: 16 }} />
                   <a
                     href="https://github.com"
@@ -124,7 +124,7 @@ export default function About() {
                   >
                     github.com/webaac
                   </a>
-                </div>
+                </div> */}
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <MailOutlined style={{ color: '#1890ff', fontSize: 16 }} />

@@ -37,21 +37,21 @@ const TAB_ITEMS = [
     label:    <span><PictureOutlined /> Logo</span>,
     children: <CompanyLogoSettings />,
   },
-  {
-    key:      'finance',
-    label:    <span><DollarOutlined /> Finance</span>,
-    children: <FinanceSettings />,
-  },
-  {
-    key:      'general',
-    label:    <span><SettingOutlined /> General</span>,
-    children: <GeneralSettings />,
-  },
-  {
-    key:      'money',
-    label:    <span><GlobalOutlined /> Money Format</span>,
-    children: <MoneyFormatSettings />,
-  },
+  // {
+  //   key:      'finance',
+  //   label:    <span><DollarOutlined /> Finance</span>,
+  //   children: <FinanceSettings />,
+  // },
+  // {
+  //   key:      'general',
+  //   label:    <span><SettingOutlined /> General</span>,
+  //   children: <GeneralSettings />,
+  // },
+  // {
+  //   key:      'money',
+  //   label:    <span><GlobalOutlined /> Money Format</span>,
+  //   children: <MoneyFormatSettings />,
+  // },
 ];
 
 export default function Settings() {
