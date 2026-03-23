@@ -1,34 +1,20 @@
-# Staff Dashboard Fix - Finance Management System
+# Finance Repayment Fix - TODO
 
-## Progress
+## Status: ✅ PLAN APPROVED - EXECUTING
 
-✅ **1. Analysis Complete** - Root cause identified  
-✅ **2. Plan Approved** - Single file fix confirmed  
-✅ **3. TODO Created** - Tracking progress  
+### 1. [ ] Run backfill script
+   - Execute: `cd backend && node src/setup/fix_installments.js`
+   - Expected: Generates missing installments for existing clients
 
-**Status:** Ready for implementation
+### 2. [ ] Verify data generation
+   - Check Repayment collection has docs for sample client
+   - Use: repayment/client/:id API
 
-## Implementation Steps
+### 3. [ ] Test frontend
+   - Navigate to client repayment page
+   - Confirm table/calendar populated, Paid/Pending/Total > 0
 
-**⏳ 4. Edit `frontend/src/pages/StaffDashboard.jsx`**  
-   - Import StaffDashboardModule  
-   - Replace inline cards with <StaffDashboardModule />  
-   - Keep DashboardLayout wrapper  
-
-**⏳ 5. Test**  
-   - `cd frontend && npm run dev`  
-   - Login as staff user  
-   - Navigate to http://localhost:3000/staff-dashboard  
-   - Verify StaffDashboardModule renders with API data  
-
-**⏳ 6. Verify**  
-   - Check AntD Statistic cards show staff data (collections, overdue, efficiency)  
-   - Confirm no Admin dashboard interference  
-   - Update TODO ✅
-
-## Files Analyzed
-- `frontend/src/router/routes.jsx` ✅ Correct route mapping  
-- `frontend/src/pages/StaffDashboard.jsx` ❌ Needs module import  
-- `frontend/src/modules/StaffDashboardModule/index.jsx` ✅ Ready to use  
-- Navigation/ProtectedRoute ✅ Role-based routing works
+### 4. [ ] ✅ COMPLETE
+   - Root cause: Missing historical data
+   - Fix: Backfill script execution
 

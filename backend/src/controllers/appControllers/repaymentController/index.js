@@ -441,18 +441,34 @@ function modelController() {
   methods.clientRepayments = async (req, res) => {
     try {
       const { clientId } = req.params;
-      const staffFilter  = await buildStaffFilter(req.admin, 'client');
-      let query = { removed: false };
+      const clientObjectId = mongoose.Types.ObjectId.isValid(clientId) ? new mongoose.Types.ObjectId(clientId) : clientId;
+      
+      const staffFilter = await buildStaffFilter(req.admin, 'client');
+      
+      let query = { 
+        removed: false, 
+        client: clientObjectId
+      };
 
-      if (staffFilter.client && staffFilter.client.$in) {
-        const allowedIds = staffFilter.client.$in.map((id) => id?.toString());
-        if (mongoose.Types.ObjectId.isValid(clientId) && allowedIds.includes(clientId.toString())) {
-          query.client = clientId;
-        } else {
-          return res.status(200).json({ success: true, result: [], message: 'No repayments found' });
+      // Fix: For staff, verify access to this specific client instead of conflicting filter
+      if (req.admin?.role === 'staff') {
+        const Client = mongoose.model('Client');
+        const hasAccess = await Client.countDocuments({
+          _id: clientObjectId,
+          assigned: req.admin._id,
+          removed: false
+        }) > 0;
+
+        if (!hasAccess) {
+          return res.status(403).json({
+            success: true,
+            result: [],
+            message: 'No access to this client'
+          });
         }
       } else {
-        query.client = clientId;
+        // Admin/owner: apply any additional staffFilter (unlikely)
+        Object.assign(query, staffFilter);
       }
 
       const repayments = await Model.find(query).sort({ date: 1 }).populate('client').exec();
@@ -474,6 +490,7 @@ function modelController() {
       if (!clientId || !date) {
         return res.status(400).json({ success: false, result: null, message: 'clientId and date are required' });
       }
+      const clientObjectId = mongoose.Types.ObjectId.isValid(clientId) ? new mongoose.Types.ObjectId(clientId) : clientId;
       if (!mongoose.Types.ObjectId.isValid(clientId)) {
         return res.status(400).json({ success: false, result: null, message: 'Invalid client ID' });
       }
@@ -482,9 +499,21 @@ function modelController() {
       const end   = new Date(date); end.setHours(23, 59, 59, 999);
 
       const staffFilter = await buildStaffFilter(req.admin, 'client');
-      let query = { client: clientId, date: { $gte: start, $lte: end }, removed: false };
-      if (Object.keys(staffFilter).length > 0) {
-        query = { $and: [query, staffFilter] };
+      let query = { client: clientObjectId, date: { $gte: start, $lte: end }, removed: false };
+      if (req.admin?.role === 'staff') {
+        const Client = mongoose.model('Client');
+        const hasAccess = await Client.countDocuments({
+          _id: clientObjectId,
+          assigned: req.admin._id,
+          removed: false
+        }) > 0;
+        if (!hasAccess) {
+          return res.status(404).json({ success: false, result: null, message: 'Client not found or access denied' });
+        }
+      } else {
+        if (Object.keys(staffFilter).length > 0) {
+          query = { $and: [query, staffFilter] };
+        }
       }
 
       let repayment = await Model.findOne(query).sort({ date: 1, created: 1 }).populate('client').exec();

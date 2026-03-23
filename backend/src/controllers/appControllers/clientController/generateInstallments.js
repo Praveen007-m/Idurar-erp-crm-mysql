@@ -94,7 +94,7 @@ const generateInstallments = async (client) => {
             interest: roundCurrency(interestPerInstallment),
             amountPaid: 0,
             remainingBalance: roundCurrency(installmentAmount),
-            status: 'not-started',
+            status: 'not_started',
             createdBy,
         });
     }
