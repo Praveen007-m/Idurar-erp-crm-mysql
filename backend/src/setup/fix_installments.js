@@ -42,7 +42,11 @@ async function generateInstallmentsForClient(client) {
         return { success: false, reason: 'missing_loan_details' };
     }
 
-    const installments = [];
+    
+</xai:function_call >
+
+<xai:function_call name="edit_file">
+<parameter name="path">backend/src/setup/fix_installments.js
     const numUnits = parseInt(term);
     if (isNaN(numUnits) || numUnits <= 0) {
         console.log(`  ⚠ Skipping - invalid term: ${term}`);
@@ -50,53 +54,17 @@ async function generateInstallmentsForClient(client) {
     }
 
     const P = parseFloat(loanAmount);
-    const monthlyRate = parseFloat(interestRate) / 100;
+    const annualRate = parseFloat(interestRate) / 100;
+    
+    const periodsPerYear = repaymentType === 'Weekly' ? 52 : repaymentType === 'Daily' ? 365 : 12;
+    const periodRate = annualRate / periodsPerYear;
+    
+    let durationUnit = repaymentType === 'Weekly' ? 'weeks' : repaymentType === 'Daily' ? 'days' : 'months';
+    let numMonths = repaymentType === 'Weekly' ? numUnits / 4.33 : repaymentType === 'Daily' ? numUnits / 30 : numUnits;
 
-    let durationUnit = 'months';
-    let numMonths = numUnits;
-
-    if (repaymentType === 'Monthly EMI') {
-        durationUnit = 'months';
-        numMonths = numUnits;
-    } else if (repaymentType === 'Weekly') {
-        durationUnit = 'weeks';
-        numMonths = numUnits / 4;
-    } else if (repaymentType === 'Daily') {
-        durationUnit = 'days';
-        numMonths = numUnits / 30;
-    }
-
-    let totalInterest = 0;
-
-    if (interestType === 'flat') {
-        totalInterest = P * monthlyRate * numMonths;
-    } else {
-        const periodRate = monthlyRate * (numMonths / numUnits);
-        if (periodRate > 0) {
-            const installmentAmount = (P * periodRate * Math.pow(1 + periodRate, numUnits)) / (Math.pow(1 + periodRate, numUnits) - 1);
-            totalInterest = (installmentAmount * numUnits) - P;
-        } else {
-            totalInterest = 0;
-        }
-    }
-
-    const installmentAmount = (P + totalInterest) / numUnits;
-    const interestPerInstallment = totalInterest / numUnits;
     const principalPerInstallment = P / numUnits;
-
-    for (let i = 1; i <= numUnits; i++) {
-        const dueDate = moment(startDate).add(i, durationUnit).toDate();
-        installments.push({
-            client: clientId,
-            date: dueDate,
-            amount: parseFloat(installmentAmount.toFixed(2)),
-            principal: parseFloat(principalPerInstallment.toFixed(2)),
-            interest: parseFloat(interestPerInstallment.toFixed(2)),
-            status: 'not_started',
-            paymentStatus: 'not_started',
-            createdBy: client.createdBy,
-        });
-    }
+    
+    installments = installmentObjects;
 
     try {
         const result = await Repayment.insertMany(installments);

@@ -67,8 +67,8 @@ export default function StaffDashboard() {
   // ── FIX 3: dashboardData IS already the result object (useFetch unwraps it).
   //    Never add .result again — that gives undefined.
   //    Read flat fields first, nested collections as fallback.
-  const data = dashboardData.result || {};
-  const { totalGiven = 0, totalPending = 0 } = data;
+  const data = dashboardData || {};
+  const { totalCollected: totalGiven = 0, pendingAmount: totalPending = 0 } = data;
 
   return (
     <DashboardLayout>

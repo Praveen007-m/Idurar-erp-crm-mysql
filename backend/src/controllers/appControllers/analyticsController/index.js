@@ -56,7 +56,18 @@ const reports = async (req, res) => {
           totalCollected: { $sum: '$amountPaid' },
           pendingBalance: { $sum: '$balance' },
           monthCollected: {
-            $sum: { $cond: [{ $gte: ['$updated', monthStart] }, '$amountPaid', 0] },
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ['$paidDate', null] },
+                    { $gte: ['$paidDate', monthStart] }
+                  ]
+                },
+                '$amountPaid',
+                0
+              ]
+            },
           },
           monthPending: {
             $sum: {
@@ -175,7 +186,7 @@ const globalSummary = async (req, res) => {
           _id: null,
           totalCollected:  { $sum: '$amountPaid'  },
           pendingBalance:  { $sum: '$balance'     },
-          totalExpected:   { $sum: '$totalAmount'  },
+          totalExpected:   { $sum: '$amount'     },
           totalRepayments: { $sum: 1 },
           monthCollected: {
             $sum: { $cond: [{ $gte: ['$updated', monthStart] }, '$amountPaid', 0] },
@@ -254,7 +265,7 @@ const performance = async (req, res) => {
               $group: {
                 _id: null,
                 totalCollected: { $sum: '$amountPaid'  },
-                totalExpected:  { $sum: '$totalAmount'  },
+                totalExpected:  { $sum: '$amount'     },
                 pending:        { $sum: '$balance'     },
                 monthCollected: {
                   $sum: { $cond: [{ $gte: ['$updated', monthStart] }, '$amountPaid', 0] },
@@ -340,7 +351,7 @@ const staffDashboard = async (req, res) => {
             _id: null,
             totalCollected: { $sum: '$amountPaid'  },
             pendingAmount:  { $sum: '$balance'     },
-            totalExpected:  { $sum: '$totalAmount'  },
+            totalExpected:  { $sum: '$amount'     },
             monthCollected: {
               $sum: { $cond: [{ $gte: ['$updated', monthStart] }, '$amountPaid', 0] },
             },
@@ -422,7 +433,7 @@ const performanceSummary = async (req, res) => {
             _id: null,
             totalCollected: { $sum: '$amountPaid'  },
             pendingAmount:  { $sum: '$balance'     },
-            totalExpected:  { $sum: '$totalAmount'  },
+            totalExpected:  { $sum: '$amount'     },
             monthCollected: {
               $sum: { $cond: [{ $gte: ['$updated', monthStart] }, '$amountPaid', 0] },
             },

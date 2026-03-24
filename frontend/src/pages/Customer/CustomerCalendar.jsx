@@ -354,21 +354,68 @@ export default function CustomerCalendar() {
 
         {/* Summary Stats */}
         <Row gutter={[10, 10]} style={{ marginBottom: 12 }}>
+
           {[
-            { label: translate('Paid'), value: totals.paid, color: '#52c41a', bg: '#f6ffed', icon: <CheckCircleOutlined /> },
-            { label: translate('Pending'), value: totals.pending, color: '#fa8c16', bg: '#fff2e8', icon: <ExclamationCircleOutlined /> },
-            { label: translate('Total'), value: totals.total, color: '#1890ff', bg: '#e6f7ff', icon: <DollarOutlined /> },
+            {
+              label: translate('Installment Amount'),
+              value: repayments?.[0]?.amount || 0,
+              color: '#722ed1',
+              bg: '#f9f0ff',
+              icon: <CalendarOutlined />,
+            },
+            {
+              label: translate('Paid'),
+              value: totals.paid,
+              color: '#52c41a',
+              bg: '#f6ffed',
+              icon: <CheckCircleOutlined />,
+            },
+            {
+              label: translate('Pending'),
+              value: totals.pending,
+              color: '#fa8c16',
+              bg: '#fff2e8',
+              icon: <ExclamationCircleOutlined />,
+            },
+            {
+              label: translate('Total'),
+              value: totals.total,
+              color: '#1890ff',
+              bg: '#e6f7ff',
+              icon: <DollarOutlined />,
+            },
           ].map(({ label, value, color, bg, icon }) => (
-            <Col xs={24} sm={8} key={label}>
-              <Card size="small" bordered={false}
-                style={{ background: bg, borderRadius: 10, border: `1px solid ${color}33` }}
+            <Col xs={24} sm={12} md={6} key={label}>
+              <Card
+                size="small"
+                bordered={false}
+                style={{
+                  background: bg,
+                  borderRadius: 10,
+                  border: `1px solid ${color}33`,
+                }}
                 styles={{ body: { padding: isMobile ? '12px 14px' : '14px 18px' } }}
               >
                 <Space>
-                  <span style={{ color, fontSize: isMobile ? 20 : 22 }}>{icon}</span>
+                  <span style={{ color, fontSize: isMobile ? 20 : 22 }}>
+                    {icon}
+                  </span>
+
                   <div>
-                    <Typography.Text type="secondary" style={{ fontSize: 11 }}>{label}</Typography.Text>
-                    <div style={{ fontWeight: 700, color, fontSize: isMobile ? 15 : 17 }}>
+                    <Typography.Text
+                      type="secondary"
+                      style={{ fontSize: 11 }}
+                    >
+                      {label}
+                    </Typography.Text>
+
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        color,
+                        fontSize: isMobile ? 15 : 17,
+                      }}
+                    >
                       {moneyFormatter({ amount: value })}
                     </div>
                   </div>
@@ -544,7 +591,7 @@ export default function CustomerCalendar() {
               </Descriptions>
 
               <Descriptions title={<Typography.Text type="secondary">PAYMENT INFO</Typography.Text>} bordered column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}>
-{(() => {
+                {(() => {
                   const pd = client.paymentDetails || {};
                   const upiId = pd.upiId || client.upiId;
                   const bankName = pd.bankName || client.bankName;

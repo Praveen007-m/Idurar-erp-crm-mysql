@@ -50,54 +50,103 @@ const generateInstallments = async (client) => {
     }
 
     const principal = Number.parseFloat(loanAmount);
-    const monthlyRate = Number.parseFloat(interestRate) / 100;
+    const annualRate = Number.parseFloat(interestRate) / 100;
+    
+    const periodsPerYear = repaymentType === 'Weekly' ? 52 : repaymentType === 'Daily' ? 365 : 12;
+    const periodRate = annualRate / periodsPerYear;
+    
+    let durationUnit = repaymentType === 'Weekly' ? 'weeks' : repaymentType === 'Daily' ? 'days' : 'months';
+    let totalMonths = repaymentType === 'Weekly' ? installmentCount / 4.33 : repaymentType === 'Daily' ? installmentCount / 30 : installmentCount;
 
-    let durationUnit = 'months';
-    let totalMonths = installmentCount;
-
-    if (repaymentType === 'Weekly') {
-        durationUnit = 'weeks';
-        totalMonths = installmentCount / 4;
-    } else if (repaymentType === 'Daily') {
-        durationUnit = 'days';
-        totalMonths = installmentCount / 30;
-    }
-
-    let totalInterest = 0;
+    const principalPerInstallment = principal / installmentCount;
+    let installments = [];
 
     if (interestType === 'flat') {
-        totalInterest = principal * monthlyRate * totalMonths;
+        const totalInterest = principal * annualRate * totalMonths;
+        const interestPerInstallment = totalInterest / installmentCount;
+        const installmentAmount = principalPerInstallment + interestPerInstallment;
+        
+        for (let index = 1; index <= installmentCount; index += 1) {
+            const dueDate = moment(startDate).add(index, durationUnit).toDate();
+            installments.push({
+                client: clientId,
+                date: dueDate,
+                amount: roundCurrency(installmentAmount),
+                principal: roundCurrency(principalPerInstallment),
+                interest: roundCurrency(interestPerInstallment),
+                amountPaid: 0,
+                remainingBalance: roundCurrency(installmentAmount),
+                status: 'not_started',
+                createdBy,
+            });
+        }
+    } else if (interestType === 'reducing') {
+        let outstanding = principal;
+        for (let index = 1; index <= installmentCount; index += 1) {
+            const interest = outstanding * periodRate;
+            const installmentAmount = principalPerInstallment + interest;
+            const dueDate = moment(startDate).add(index, durationUnit).toDate();
+            
+            installments.push({
+                client: clientId,
+                date: dueDate,
+                principal: roundCurrency(principalPerInstallment),
+                interest: roundCurrency(interest),
+                amount: roundCurrency(installmentAmount),
+                amountPaid: 0,
+                remainingBalance: roundCurrency(installmentAmount),
+                status: 'not_started',
+                createdBy,
+            });
+            
+            outstanding -= principalPerInstallment;
+            if (outstanding < 0) outstanding = 0;
+        }
     } else {
-        const periodRate = monthlyRate * (totalMonths / installmentCount);
-        if (periodRate > 0) {
+        // EMI (Monthly EMI)
+        const emiRate = annualRate / 12; // Monthly for EMI
+        if (emiRate > 0) {
             const installmentAmount =
-                (principal * periodRate * Math.pow(1 + periodRate, installmentCount)) /
-                (Math.pow(1 + periodRate, installmentCount) - 1);
-            totalInterest = installmentAmount * installmentCount - principal;
+                (principal * emiRate * Math.pow(1 + emiRate, installmentCount)) /
+                (Math.pow(1 + emiRate, installmentCount) - 1);
+            const totalInterest = installmentAmount * installmentCount - principal;
+            const interestPerInstallment = totalInterest / installmentCount;
+            
+            for (let index = 1; index <= installmentCount; index += 1) {
+                const dueDate = moment(startDate).add(index, durationUnit).toDate();
+                installments.push({
+                    client: clientId,
+                    date: dueDate,
+                    amount: roundCurrency(installmentAmount),
+                    principal: roundCurrency(principalPerInstallment),
+                    interest: roundCurrency(interestPerInstallment),
+                    amountPaid: 0,
+                    remainingBalance: roundCurrency(installmentAmount),
+                    status: 'not_started',
+                    createdBy,
+                });
+            }
+        } else {
+            // Zero interest
+            for (let index = 1; index <= installmentCount; index += 1) {
+                const dueDate = moment(startDate).add(index, durationUnit).toDate();
+                installments.push({
+                    client: clientId,
+                    date: dueDate,
+                    amount: roundCurrency(principalPerInstallment),
+                    principal: roundCurrency(principalPerInstallment),
+                    interest: 0,
+                    amountPaid: 0,
+                    remainingBalance: roundCurrency(principalPerInstallment),
+                    status: 'not_started',
+                    createdBy,
+                });
+            }
         }
     }
 
-    const interestPerInstallment = totalInterest / installmentCount;
-    const principalPerInstallment = principal / installmentCount;
-    const installmentAmount = principalPerInstallment + interestPerInstallment;
-
-    const installments = [];
-
-    for (let index = 1; index <= installmentCount; index += 1) {
-        const dueDate = moment(startDate).add(index, durationUnit).toDate();
-
-        installments.push({
-            client: clientId,
-            date: dueDate,
-            amount: roundCurrency(installmentAmount),
-            principal: roundCurrency(principalPerInstallment),
-            interest: roundCurrency(interestPerInstallment),
-            amountPaid: 0,
-            remainingBalance: roundCurrency(installmentAmount),
-            status: 'not_started',
-            createdBy,
-        });
-    }
+    // Installments populated in branches above
+    
 
     return Repayment.insertMany(installments);
 };
