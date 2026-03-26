@@ -1,11 +1,21 @@
 /**
  * pages/Reports/index.jsx — Webaac Solutions Finance Management
+ * FULLY RESPONSIVE (Mobile-First)
  */
 
 import { useEffect, useState } from 'react';
 import {
-  Row, Col, Card, Table, Spin, Alert,
-  Divider, Statistic, Typography, Grid, Space,
+  Row,
+  Col,
+  Card,
+  Table,
+  Spin,
+  Alert,
+  Divider,
+  Statistic,
+  Typography,
+  Grid,
+  Space,
 } from 'antd';
 
 import {
@@ -44,13 +54,21 @@ export default function Reports() {
   const data = dashboardData?.result ?? dashboardData ?? {};
 
   if (loading)
-    return <Spin size="large" style={{ display: 'block', margin: '60px auto' }} />;
+    return (
+      <DashboardLayout>
+        <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />
+      </DashboardLayout>
+    );
 
   if (error)
-    return <Alert message="Error loading reports" type="error" showIcon style={{ margin: 24 }} />;
+    return (
+      <DashboardLayout>
+        <Alert message="Error loading reports" type="error" showIcon style={{ margin: 24 }} />
+      </DashboardLayout>
+    );
 
   // ─────────────────────────────────────────────
-  // ✅ DEFAULTED AMOUNT CALCULATION
+  // DEFAULTED AMOUNT
   // ─────────────────────────────────────────────
 
   const defaultedAmount =
@@ -59,7 +77,7 @@ export default function Reports() {
       .reduce((sum, s) => sum + Number(s.total || 0), 0);
 
   // ─────────────────────────────────────────────
-  // Status label formatter
+  // STATUS FORMAT
   // ─────────────────────────────────────────────
 
   const formatStatus = (v) => {
@@ -67,7 +85,7 @@ export default function Reports() {
       .replace(/_/g, ' ')
       .toLowerCase()
       .split(' ')
-      .map((x) => x[0]?.toUpperCase() + x.slice(1))
+      .map(x => x[0]?.toUpperCase() + x.slice(1))
       .join(' ');
 
     const colors = {
@@ -82,7 +100,7 @@ export default function Reports() {
   };
 
   // ─────────────────────────────────────────────
-  // Table columns
+  // TABLE COLUMNS
   // ─────────────────────────────────────────────
 
   const statusColumns = [
@@ -93,7 +111,7 @@ export default function Reports() {
       dataIndex: 'percentage',
       key: 'percentage',
       align: 'right',
-      render: (v) => `${v}%`,
+      render: v => `${v}%`,
     },
   ];
 
@@ -102,7 +120,7 @@ export default function Reports() {
       title: translate('Plan Group'),
       dataIndex: 'planGroup',
       key: 'planGroup',
-      render: (v) => v || 'Unknown',
+      render: v => v || 'Unknown',
     },
     {
       title: translate('Customers'),
@@ -115,7 +133,7 @@ export default function Reports() {
       dataIndex: 'collected',
       key: 'collected',
       align: 'right',
-      render: (v) => (
+      render: v => (
         <span style={{ color: '#52c41a' }}>
           {moneyFormatter({ amount: v ?? 0 })}
         </span>
@@ -126,7 +144,7 @@ export default function Reports() {
       dataIndex: 'pending',
       key: 'pending',
       align: 'right',
-      render: (v) => (
+      render: v => (
         <span style={{ color: '#ff4d4f' }}>
           {moneyFormatter({ amount: v ?? 0 })}
         </span>
@@ -135,7 +153,7 @@ export default function Reports() {
   ];
 
   // ─────────────────────────────────────────────
-  // STAT CARDS DATA
+  // STAT CARDS
   // ─────────────────────────────────────────────
 
   const statCards = [
@@ -185,11 +203,18 @@ export default function Reports() {
           {translate('Collection Reports')}
         </Typography.Title>
 
-        {/* ───────────── FULL WIDTH SINGLE LINE CARDS ───────────── */}
+        {/* ⭐ RESPONSIVE STAT CARDS */}
 
-        <Row gutter={[12, 12]} wrap={false} style={{ marginBottom: 4 }}>
+        <Row gutter={[12, 12]}>
           {statCards.map((card, idx) => (
-            <Col key={idx} flex="1 1 0" style={{ minWidth: isMobile ? '50%' : 0 }}>
+            <Col
+              key={idx}
+              xs={24}   // mobile
+              sm={12}   // small tablet
+              md={8}    // tablet
+              lg={6}    // desktop
+              xl={4}    // large desktop
+            >
               <Card
                 size="small"
                 bordered={false}
@@ -210,7 +235,7 @@ export default function Reports() {
                   }
                   value={card.value}
                   prefix={card.icon}
-                  formatter={(val) => moneyFormatter({ amount: val })}
+                  formatter={val => moneyFormatter({ amount: val })}
                   valueStyle={{
                     color: card.color,
                     fontSize: isMobile ? 18 : 22,
@@ -224,7 +249,7 @@ export default function Reports() {
 
         <Divider style={{ margin: isMobile ? '14px 0' : '24px 0' }} />
 
-        {/* ───────────── TABLES ───────────── */}
+        {/* ⭐ TABLES */}
 
         <Row gutter={[12, 12]}>
           <Col xs={24} md={12}>
