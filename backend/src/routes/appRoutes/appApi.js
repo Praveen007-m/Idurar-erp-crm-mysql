@@ -273,9 +273,15 @@ router
   .route('/payment-mode')
   .post(catchErrors(appControllers.paymentModeController.create));
 
+// Added after the existing download route:
+router
+  .route('/payment/export')
+  .get(catchErrors(appControllers.paymentController.exportCsv));
+
 router
   .route('/payment-mode/:id')
-  .put(catchErrors(appControllers.paymentModeController.update));
+  .put(catchErrors(appControllers.paymentModeController.update)); 
+
 
 // =============================
 // AUTO REGISTER ENTITY ROUTES
