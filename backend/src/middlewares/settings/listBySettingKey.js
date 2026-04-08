@@ -1,31 +1,11 @@
-const mongoose = require('mongoose');
+const db = require('@/services/dbService');
+const { mapSetting } = require('@/services/mysql/settingsService');
 
-const Model = mongoose.model('Setting');
-
-const listBySettingKey = async ({ settingKeyArray = [] }) => {
-  try {
-    // Find document by id
-
-    const settingsToShow = { $or: [] };
-
-    if (settingKeyArray.length === 0) {
-      return [];
-    }
-
-    for (const settingKey of settingKeyArray) {
-      settingsToShow.$or.push({ settingKey });
-    }
-    let results = await Model.find({ ...settings }).where('removed', false);
-
-    // If no results found, return document not found
-    if (results.length >= 1) {
-      return results;
-    } else {
-      return [];
-    }
-  } catch {
-    return [];
-  }
+module.exports = async ({ settingCategory }) => {
+  const rows = settingCategory
+    ? await db.query('SELECT * FROM settings WHERE setting_key LIKE ? ORDER BY id DESC', [
+        `%${String(settingCategory || '').toLowerCase()}%`,
+      ])
+    : await db.query('SELECT * FROM settings ORDER BY id DESC');
+  return rows.map(mapSetting);
 };
-
-module.exports = listBySettingKey;

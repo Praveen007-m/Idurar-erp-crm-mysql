@@ -46,14 +46,38 @@ const normalizeStatus = (status) => {
 const getDisplayStatus = (repayment) => {
   const today = new Date();
   const due = new Date(repayment?.date);
-  const status = normalizeStatus(repayment?.status);
   today.setHours(0, 0, 0, 0);
   due.setHours(0, 0, 0, 0);
-  if (status === 'paid') return 'paid';
-  if (status === 'late') return 'late';
-  if (status === 'partial') return 'partial';
-  if (today < due) return 'not-started';
-  return 'default';
+
+  const amount = Number(repayment?.amount || 0);
+  const amountPaid = Number(repayment?.amountPaid || 0);
+
+  if (amount > 0 && amountPaid >= amount) {
+    const paidDate = repayment?.paymentDate || repayment?.paidDate;
+    if (paidDate) {
+      const paidAt = new Date(paidDate);
+      paidAt.setHours(0, 0, 0, 0);
+      if (paidAt > due) return 'late';
+      return 'paid';
+    }
+    return 'paid';
+  }
+
+  if (amountPaid > 0 && amountPaid < amount) {
+    if (due < today) return 'late';
+    return 'partial';
+  }
+
+  if (amountPaid === 0) {
+    if (due < today) return 'default';
+    return 'not-started';
+  }
+
+  if (normalizeStatus(repayment?.status) === 'paid') return 'paid';
+  if (normalizeStatus(repayment?.status) === 'late') return 'late';
+  if (normalizeStatus(repayment?.status) === 'partial') return 'partial';
+
+  return 'not-started';
 };
 
 const LegendDot = ({ color, label }) => (
@@ -235,15 +259,21 @@ export default function CustomerCalendar() {
   };
 
   // ── Format payload for submit ─────────────────────────────────────────────
-  const formatPayload = (values) => ({
-    ...values,
-    amountPaid: (['paid', 'late'].includes(values.status) && !values.amountPaid)
-      ? values.amount : values.amountPaid,
-    date: values.date ? dayjs(values.date).toISOString() : undefined,
-    paymentDate: values.paymentDate
-      ? dayjs(values.paymentDate).toISOString()
-      : (['paid', 'late'].includes(values.status) ? new Date().toISOString() : null),
-  });
+  const formatPayload = (values) => {
+    const amountPaid = values.amountPaid !== undefined 
+      ? values.amountPaid 
+      : (editingRepayment?.amountPaid ?? 0);
+    
+    return {
+      ...values,
+      amountPaid: (['paid', 'late'].includes(values.status) && !amountPaid)
+        ? values.amount : amountPaid,
+      date: values.date ? dayjs(values.date).toISOString() : undefined,
+      paymentDate: values.paymentDate
+        ? dayjs(values.paymentDate).toISOString()
+        : (['paid', 'late'].includes(values.status) ? new Date().toISOString() : null),
+    };
+  };
 
   // ── Submit edit ───────────────────────────────────────────────────────────
   const handleEditOk = async () => {

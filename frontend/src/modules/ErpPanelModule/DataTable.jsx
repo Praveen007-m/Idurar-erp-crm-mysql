@@ -117,7 +117,7 @@ export default function DataTable({ config, extra = [] }) {
     try {
       // Read the JWT token exactly the way Idurar's request.js reads it
       const auth = JSON.parse(localStorage.getItem('auth') || '{}');
-      const token = auth?.current?.token || '';
+      const token = auth?.token || auth?.current?.token || localStorage.getItem('token') || '';
 
       // Build the absolute backend URL — avoids Vite proxy entirely
       const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8888/api';

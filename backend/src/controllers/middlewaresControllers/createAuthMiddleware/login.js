@@ -1,59 +1,64 @@
 const Joi = require('joi');
-
-const mongoose = require('mongoose');
-
 const authUser = require('./authUser');
+const { findAdminByEmail } = require('@/services/mysql/adminService');
 
-const login = async (req, res, { userModel }) => {
-  const UserPasswordModel = mongoose.model(userModel + 'Password');
-  const UserModel = mongoose.model(userModel);
-  const { email, password } = req.body;
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-  // validate
-  const objectSchema = Joi.object({
-    email: Joi.string()
-      .email({ tlds: { allow: true } })
-      .required(),
-    password: Joi.string().required(),
-  });
+    console.log('[auth.login] Incoming request', {
+      email: String(email || '').trim().toLowerCase(),
+      remember: Boolean(req.body?.remember),
+    });
 
-  const { error, value } = objectSchema.validate({ email, password });
-  if (error) {
-    return res.status(409).json({
+    const objectSchema = Joi.object({
+      email: Joi.string().email({ tlds: { allow: true } }).required(),
+      password: Joi.string().required(),
+    });
+
+    const { error } = objectSchema.validate({ email, password });
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        result: null,
+        error,
+        message: 'Invalid/Missing credentials.',
+        errorMessage: error.message,
+      });
+    }
+
+    const user = await findAdminByEmail(email);
+    console.log('[auth.login] User lookup completed', {
+      email: String(email || '').trim().toLowerCase(),
+      found: Boolean(user),
+      role: user?.role || null,
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        result: null,
+        message: 'No account with this email has been registered.',
+      });
+    }
+
+    if (user.enabled === false) {
+      return res.status(401).json({
+        success: false,
+        result: null,
+        message: 'Your account is disabled, contact your account adminstrator',
+      });
+    }
+
+    return authUser(req, res, { user, password });
+  } catch (error) {
+    console.error('[auth.login] Failed', error.stack || error);
+    return res.status(500).json({
       success: false,
       result: null,
-      error: error,
-      message: 'Invalid/Missing credentials.',
-      errorMessage: error.message,
+      message: 'Internal server error',
     });
   }
-
-  const user = await UserModel.findOne({ email: email, removed: false });
-
-  // console.log(user);
-  if (!user)
-    return res.status(404).json({
-      success: false,
-      result: null,
-      message: 'No account with this email has been registered.',
-    });
-
-  const databasePassword = await UserPasswordModel.findOne({ user: user._id, removed: false });
-
-  if (!user.enabled)
-    return res.status(409).json({
-      success: false,
-      result: null,
-      message: 'Your account is disabled, contact your account adminstrator',
-    });
-
-  //  authUser if your has correct password
-  authUser(req, res, {
-    user,
-    databasePassword,
-    password,
-    UserPasswordModel,
-  });
 };
 
 module.exports = login;

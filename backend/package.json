@@ -9,9 +9,9 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js --ignore public/",
     "production": "NODE_ENV=production",
-    "setup": "node src/setup/setup.js",
-    "upgrade": "node src/setup/upgrade.js",
-    "reset": "node src/setup/reset.js"
+    "setup": "node -e \"console.log('MySQL schema is expected to be provisioned externally before startup.')\"",
+    "upgrade": "node -e \"console.log('No Mongo upgrade path remains. Apply MySQL migrations at the database layer.')\"",
+    "reset": "node -e \"console.log('Reset is not automated in this MySQL build.')\""
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.509.0",
@@ -31,9 +31,8 @@
     "lodash": "^4.17.21",
     "module-alias": "^2.2.3",
     "moment": "^2.30.1",
-    "mongoose": "^8.1.1",
-    "mongoose-autopopulate": "^1.1.0",
     "multer": "^1.4.4",
+    "mysql2": "^3.20.0",
     "node-cache": "^5.1.2",
     "openai": "^4.27.0",
     "pug": "^3.0.2",

@@ -26,7 +26,8 @@ function useAnalyticsEndpoint(endpoint, autoRefresh = true) {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('token');
+      const auth = JSON.parse(localStorage.getItem('auth') || '{}');
+      const token = auth?.token || auth?.current?.token || localStorage.getItem('token');
       const { data: res } = await axios.get(`${API_BASE_URL}${endpoint}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });

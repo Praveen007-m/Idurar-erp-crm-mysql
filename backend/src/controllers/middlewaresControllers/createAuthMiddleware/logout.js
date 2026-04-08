@@ -1,29 +1,12 @@
-const mongoose = require('mongoose');
+const { removeLoggedSession } = require('@/services/mysql/adminService');
 
-const logout = async (req, res, { userModel }) => {
-  const UserPassword = mongoose.model(userModel + 'Password');
+const logout = async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.split(' ')[1];
 
-  // const token = req.cookies[`token_${cloud._id}`];
-
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Extract the token
-
-  if (token)
-    await UserPassword.findOneAndUpdate(
-      { user: req.admin._id },
-      { $pull: { loggedSessions: token } },
-      {
-        new: true,
-      }
-    ).exec();
-  else
-    await UserPassword.findOneAndUpdate(
-      { user: req.admin._id },
-      { loggedSessions: [] },
-      {
-        new: true,
-      }
-    ).exec();
+  if (token) {
+    await removeLoggedSession(req.admin._id, token);
+  }
 
   return res.json({
     success: true,

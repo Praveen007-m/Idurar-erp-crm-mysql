@@ -1,129 +1,79 @@
-const mongoose = require('mongoose');
-const Model = mongoose.model('PaymentMode');
-const createCRUDController = require('@/controllers/middlewaresControllers/createCRUDController');
-const methods = createCRUDController('PaymentMode');
+const db = require('@/services/dbService');
 
-delete methods['delete'];
+const mapPaymentMode = (row) => ({
+  _id: row.id,
+  id: row.id,
+  removed: false,
+  enabled: true,
+  name: row.name,
+  description: '',
+  ref: '',
+  isDefault: false,
+  created: row.created || null,
+});
 
-methods.create = async (req, res) => {
-  const enabled = req.body.enabled !== undefined ? Boolean(req.body.enabled) : true;
-  let isDefault = req.body.isDefault === true;
+const methods = {};
 
-  if (!enabled) {
-    isDefault = false;
-  }
-
-  if (isDefault) {
-    await Model.updateMany({}, { isDefault: false });
-  }
-
-  const countDefault = await Model.countDocuments({
-    isDefault: true,
-  });
-
-  const result = await new Model({
-    ...req.body,
-    enabled,
-    isDefault: enabled ? isDefault || countDefault < 1 : false,
-  }).save();
-
-  return res.status(200).json({
+methods.list = async (_req, res) => {
+  const rows = await db.query('SELECT * FROM payment_modes ORDER BY id DESC');
+  return res.status(rows.length > 0 ? 200 : 203).json({
     success: true,
-    result: result,
-    message: 'payment mode created successfully',
+    result: rows.map(mapPaymentMode),
+    pagination: undefined,
+    message: rows.length > 0 ? 'Successfully found all documents' : 'Collection is Empty',
   });
 };
 
-methods.delete = async (req, res) => {
-  return res.status(403).json({
-    success: false,
-    result: null,
-    message: "you can't delete payment mode after it has been created",
-  });
+methods.listAll = methods.list;
+
+methods.read = async (req, res) => {
+  const rows = await db.query('SELECT * FROM payment_modes WHERE id = ? LIMIT 1', [req.params.id]);
+  const result = rows[0] ? mapPaymentMode(rows[0]) : null;
+  if (!result) {
+    return res.status(404).json({ success: false, result: null, message: 'No document found ' });
+  }
+  return res.status(200).json({ success: true, result, message: 'we found this document ' });
+};
+
+methods.create = async (req, res) => {
+  if (!req.body.name) {
+    return res.status(400).json({ success: false, result: null, message: 'name is required' });
+  }
+
+  const result = await db.run('INSERT INTO payment_modes (name) VALUES (?)', [req.body.name]);
+  const rows = await db.query('SELECT * FROM payment_modes WHERE id = ? LIMIT 1', [result.insertId]);
+  return res
+    .status(200)
+    .json({ success: true, result: mapPaymentMode(rows[0]), message: 'payment mode created successfully' });
 };
 
 methods.update = async (req, res) => {
-  const { id } = req.params;
-  const paymentMode = await Model.findOne({
-    _id: req.params.id,
-    removed: false,
-  }).exec();
-
+  const rows = await db.query('SELECT * FROM payment_modes WHERE id = ? LIMIT 1', [req.params.id]);
+  const paymentMode = rows[0];
   if (!paymentMode) {
-    return res.status(404).json({
-      success: false,
-      result: null,
-      message: 'Payment mode not found',
-    });
+    return res.status(404).json({ success: false, result: null, message: 'Payment mode not found' });
   }
 
-  const enabled = req.body.enabled !== undefined ? Boolean(req.body.enabled) : paymentMode.enabled;
-  let isDefault = req.body.isDefault !== undefined ? Boolean(req.body.isDefault) : paymentMode.isDefault;
+  await db.run('UPDATE payment_modes SET name = ? WHERE id = ?', [
+    req.body.name ?? paymentMode.name,
+    req.params.id,
+  ]);
 
-  if (!enabled) {
-    isDefault = false;
-  }
-
-  // if isDefault:false , we update first - isDefault:true
-  // if enabled:false and isDefault:true , we update first - isDefault:true
-  if (!isDefault || (!enabled && isDefault)) {
-    await Model.findOneAndUpdate(
-      { _id: { $ne: id }, enabled: true, removed: false },
-      { isDefault: true }
-    );
-  }
-
-  // if isDefault:true and enabled:true, we update other paymentMode and make is isDefault:false
-  if (isDefault) {
-    await Model.updateMany({ _id: { $ne: id } }, { isDefault: false });
-  }
-
-  const paymentModeCount = await Model.countDocuments({ removed: false });
-
-  // if enabled:false and it's only one exist, we can't disable
-  if ((!enabled || !isDefault) && paymentModeCount <= 1) {
-    return res.status(422).json({
-      success: false,
-      result: null,
-      message: 'You cannot disable the paymentMode because it is the only existing one',
-    });
-  }
-
-  let result = await Model.findOneAndUpdate(
-    { _id: id },
-    {
-      ...req.body,
-      enabled,
-      isDefault,
-    },
-    {
-      new: true,
-    }
-  );
-
-  const defaultPaymentModeCount = await Model.countDocuments({
-    removed: false,
-    enabled: true,
-    isDefault: true,
-  });
-
-  if (defaultPaymentModeCount < 1) {
-    const fallbackDefault = await Model.findOneAndUpdate(
-      { _id: { $ne: id }, removed: false, enabled: true },
-      { isDefault: true },
-      { new: true }
-    );
-
-    if (!fallbackDefault && enabled) {
-      result = await Model.findOneAndUpdate({ _id: id }, { isDefault: true }, { new: true });
-    }
-  }
-
+  const updatedRows = await db.query('SELECT * FROM payment_modes WHERE id = ? LIMIT 1', [req.params.id]);
   return res.status(200).json({
     success: true,
     message: 'paymentMode updated successfully',
-    result,
+    result: mapPaymentMode(updatedRows[0]),
   });
 };
+
+methods.delete = async (_req, res) =>
+  res.status(403).json({ success: false, result: null, message: "you can't delete payment mode after it has been created" });
+methods.search = async (_req, res) =>
+  res.status(501).json({ success: false, result: [], message: 'Not implemented for MySQL migration' });
+methods.filter = async (_req, res) =>
+  res.status(501).json({ success: false, result: [], message: 'Not implemented for MySQL migration' });
+methods.summary = async (_req, res) =>
+  res.status(501).json({ success: false, result: null, message: 'Not implemented for MySQL migration' });
 
 module.exports = methods;

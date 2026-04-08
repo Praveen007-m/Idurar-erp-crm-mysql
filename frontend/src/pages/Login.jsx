@@ -22,10 +22,12 @@ const LoginPage = () => {
   const dispatch = useDispatch();
 
   const onFinish = (values) => {
+    console.log('[login] Submitting login form', { email: values?.email, remember: values?.remember });
     dispatch(login({ loginData: values }));
   };
 
   useEffect(() => {
+    console.log('[login] Auth state changed', { isSuccess, currentAdmin });
     if (isSuccess && currentAdmin) {
       // Redirect based on role: staff goes to /customer, others go to /
       if (currentAdmin.role === 'staff') {

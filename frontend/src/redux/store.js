@@ -14,7 +14,37 @@ const AUTH_INITIAL_STATE = {
   isSuccess: false,
 };
 
-const auth_state = storePersist.get('auth') ? storePersist.get('auth') : AUTH_INITIAL_STATE;
+const normalizeStoredAuth = (storedAuth) => {
+  if (!storedAuth || typeof storedAuth !== 'object') {
+    return AUTH_INITIAL_STATE;
+  }
+
+  const current = storedAuth.current || {};
+  const normalizedCurrent = {
+    ...current,
+    _id: current._id || current.id || null,
+    token: storedAuth.token || current.token || null,
+  };
+
+  if (!normalizedCurrent._id) {
+    storePersist.remove('auth');
+    return AUTH_INITIAL_STATE;
+  }
+
+  const normalizedAuth = {
+    ...storedAuth,
+    current: normalizedCurrent,
+    token: normalizedCurrent.token,
+    isLoggedIn: true,
+    isLoading: false,
+    isSuccess: true,
+  };
+
+  storePersist.set('auth', normalizedAuth);
+  return normalizedAuth;
+};
+
+const auth_state = normalizeStoredAuth(storePersist.get('auth'));
 
 const initialState = { auth: auth_state };
 

@@ -3,7 +3,7 @@ import storePersist from '@/redux/storePersist';
 
 const getAuthToken = () => {
   const auth = storePersist.get('auth');
-  return auth?.current?.token || null;
+  return auth?.token || auth?.current?.token || window.localStorage.getItem('token') || null;
 };
 
 export const downloadPaymentPdf = async (paymentId) => {

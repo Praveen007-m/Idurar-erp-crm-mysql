@@ -2,6 +2,40 @@ import * as actionTypes from './types';
 import * as authService from '@/auth';
 import { request } from '@/request';
 
+const normalizeAuthResult = (payload = {}) => {
+  const current = payload.result || payload.current || {};
+  const token = payload.token || current.token || null;
+
+  return {
+    ...current,
+    _id: current._id || current.id || null,
+    token,
+  };
+};
+
+const persistAuthState = (payload = {}) => {
+  const current = normalizeAuthResult(payload);
+  const auth_state = {
+    current,
+    token: current.token || null,
+    isLoggedIn: Boolean(current?._id),
+    isLoading: false,
+    isSuccess: Boolean(current?._id),
+  };
+
+  console.log('[auth] Persisting auth state', auth_state);
+  window.localStorage.removeItem('auth');
+  window.localStorage.removeItem('isLogout');
+  window.localStorage.setItem('auth', JSON.stringify(auth_state));
+  if (auth_state.token) {
+    window.localStorage.setItem('token', auth_state.token);
+  } else {
+    window.localStorage.removeItem('token');
+  }
+
+  return auth_state;
+};
+
 export const login =
   ({ loginData }) =>
   async (dispatch) => {
@@ -9,19 +43,13 @@ export const login =
       type: actionTypes.REQUEST_LOADING,
     });
     const data = await authService.login({ loginData });
+    console.log('[auth.login] API response', data);
 
     if (data.success === true) {
-      const auth_state = {
-        current: data.result,
-        isLoggedIn: true,
-        isLoading: false,
-        isSuccess: true,
-      };
-      window.localStorage.setItem('auth', JSON.stringify(auth_state));
-      window.localStorage.removeItem('isLogout');
+      const auth_state = persistAuthState(data);
       dispatch({
         type: actionTypes.REQUEST_SUCCESS,
-        payload: data.result,
+        payload: auth_state.current,
       });
     } else {
       dispatch({
@@ -58,17 +86,10 @@ export const verify =
     const data = await authService.verify({ userId, emailToken });
 
     if (data.success === true) {
-      const auth_state = {
-        current: data.result,
-        isLoggedIn: true,
-        isLoading: false,
-        isSuccess: true,
-      };
-      window.localStorage.setItem('auth', JSON.stringify(auth_state));
-      window.localStorage.removeItem('isLogout');
+      const auth_state = persistAuthState(data);
       dispatch({
         type: actionTypes.REQUEST_SUCCESS,
-        payload: data.result,
+        payload: auth_state.current,
       });
     } else {
       dispatch({
@@ -86,17 +107,10 @@ export const resetPassword =
     const data = await authService.resetPassword({ resetPasswordData });
 
     if (data.success === true) {
-      const auth_state = {
-        current: data.result,
-        isLoggedIn: true,
-        isLoading: false,
-        isSuccess: true,
-      };
-      window.localStorage.setItem('auth', JSON.stringify(auth_state));
-      window.localStorage.removeItem('isLogout');
+      const auth_state = persistAuthState(data);
       dispatch({
         type: actionTypes.REQUEST_SUCCESS,
-        payload: data.result,
+        payload: auth_state.current,
       });
     } else {
       dispatch({
@@ -115,21 +129,26 @@ export const logout = () => async (dispatch) => {
   const tmpSettings = JSON.parse(settings);
   window.localStorage.removeItem('auth');
   window.localStorage.removeItem('settings');
+  window.localStorage.removeItem('token');
   window.localStorage.setItem('isLogout', JSON.stringify({ isLogout: true }));
   const data = await authService.logout();
   if (data.success === false) {
     const auth_state = {
-      current: tmpAuth,
-      isLoggedIn: true,
+      current: tmpAuth?.current || {},
+      token: tmpAuth?.token || tmpAuth?.current?.token || null,
+      isLoggedIn: Boolean(tmpAuth?.current?._id || tmpAuth?.current?.id),
       isLoading: false,
-      isSuccess: true,
+      isSuccess: Boolean(tmpAuth?.current?._id || tmpAuth?.current?.id),
     };
     window.localStorage.setItem('auth', JSON.stringify(auth_state));
     window.localStorage.setItem('settings', JSON.stringify(tmpSettings));
+    if (auth_state.token) {
+      window.localStorage.setItem('token', auth_state.token);
+    }
     window.localStorage.removeItem('isLogout');
     dispatch({
       type: actionTypes.LOGOUT_FAILED,
-      payload: data.result,
+      payload: auth_state.current,
     });
   } else {
     // on lgout success
@@ -142,16 +161,22 @@ export const updateProfile =
     let data = await request.updateAndUpload({ entity, id: '', jsonData });
 
     if (data.success === true) {
+      const current = normalizeAuthResult({ result: data.result, token: data.result?.token });
       dispatch({
         type: actionTypes.REQUEST_SUCCESS,
-        payload: data.result,
+        payload: current,
       });
       const auth_state = {
-        current: data.result,
+        current,
+        token: current.token || null,
         isLoggedIn: true,
         isLoading: false,
         isSuccess: true,
       };
+      console.log('[auth] Updating profile auth state', auth_state);
       window.localStorage.setItem('auth', JSON.stringify(auth_state));
+      if (auth_state.token) {
+        window.localStorage.setItem('token', auth_state.token);
+      }
     }
   };

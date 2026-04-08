@@ -1,99 +1,71 @@
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
 const Joi = require('joi');
-const mongoose = require('mongoose');
 
-const shortid = require('shortid');
+const {
+  findAdminById,
+  getPasswordResetToken,
+  clearPasswordResetToken,
+  appendLoggedSession,
+  updatePassword,
+} = require('@/services/mysql/adminService');
+const getJwtSecret = require('@/utils/getJwtSecret');
 
-const resetPassword = async (req, res, { userModel }) => {
-  const UserPassword = mongoose.model(userModel + 'Password');
-  const User = mongoose.model(userModel);
-  const { password, userId, resetToken } = req.body;
+const resetPassword = async (req, res) => {
+  try {
+    const { password, userId, resetToken } = req.body;
 
-  const databasePassword = await UserPassword.findOne({ user: userId, removed: false });
-  const user = await User.findOne({ _id: userId, removed: false }).exec();
-
-  if (!user.enabled)
-    return res.status(409).json({
-      success: false,
-      result: null,
-      message: 'Your account is disabled, contact your account adminstrator',
+    const objectSchema = Joi.object({
+      password: Joi.string().required(),
+      userId: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
+      resetToken: Joi.string().required(),
     });
 
-  if (!databasePassword || !user)
-    return res.status(404).json({
-      success: false,
-      result: null,
-      message: 'No account with this email has been registered.',
-    });
-
-  const isMatch = resetToken === databasePassword.resetToken;
-  if (!isMatch || databasePassword.resetToken === undefined || databasePassword.resetToken === null)
-    return res.status(403).json({
-      success: false,
-      result: null,
-      message: 'Invalid reset token',
-    });
-
-  // validate
-  const objectSchema = Joi.object({
-    password: Joi.string().required(),
-    userId: Joi.string().required(),
-    resetToken: Joi.string().required(),
-  });
-
-  const { error, value } = objectSchema.validate({ password, userId, resetToken });
-  if (error) {
-    return res.status(409).json({
-      success: false,
-      result: null,
-      error: error,
-      message: 'Invalid reset password object',
-      errorMessage: error.message,
-    });
-  }
-
-  const salt = shortid.generate();
-  const hashedPassword = bcrypt.hashSync(salt + password);
-  const emailToken = shortid.generate();
-
-  const token = jwt.sign(
-    {
-      id: userId,
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: '24h' }
-  );
-
-  await UserPassword.findOneAndUpdate(
-    { user: userId },
-    {
-      $push: { loggedSessions: token },
-      password: hashedPassword,
-      salt: salt,
-      emailToken: emailToken,
-      resetToken: shortid.generate(),
-      emailVerified: true,
-    },
-    {
-      new: true,
+    const { error } = objectSchema.validate({ password, userId, resetToken });
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        result: null,
+        error,
+        message: 'Invalid reset password object',
+        errorMessage: error.message,
+      });
     }
-  ).exec();
 
-  if (
-    resetToken === databasePassword.resetToken &&
-    databasePassword.resetToken !== undefined &&
-    databasePassword.resetToken !== null
-  )
-    //  .cookie(`token_${user.cloud}`, token, {
-    //       maxAge: 24 * 60 * 60 * 1000,
-    //       sameSite: 'None',
-    //       httpOnly: true,
-    //       secure: true,
-    //       domain: req.hostname,
-    //       path: '/',
-    //       Partitioned: true,
-    //     })
+    const [user, storedResetToken] = await Promise.all([
+      findAdminById(userId),
+      getPasswordResetToken(userId),
+    ]);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        result: null,
+        message: 'No account with this email has been registered.',
+      });
+    }
+
+    if (user.enabled === false) {
+      return res.status(401).json({
+        success: false,
+        result: null,
+        message: 'Your account is disabled, contact your account adminstrator',
+      });
+    }
+
+    if (!storedResetToken || storedResetToken !== resetToken) {
+      return res.status(403).json({
+        success: false,
+        result: null,
+        message: 'Invalid reset token',
+      });
+    }
+
+    await updatePassword(userId, password);
+    await clearPasswordResetToken(userId);
+
+    const token = jwt.sign({ id: userId }, getJwtSecret(), { expiresIn: '24h' });
+    await appendLoggedSession(Number(userId), token);
+
     return res.status(200).json({
       success: true,
       result: {
@@ -103,11 +75,19 @@ const resetPassword = async (req, res, { userModel }) => {
         role: user.role,
         email: user.email,
         photo: user.photo,
-        token: token,
+        token,
         maxAge: req.body.remember ? 365 : null,
       },
       message: 'Successfully resetPassword user',
     });
+  } catch (error) {
+    console.error('[auth.resetPassword] Failed', error.stack || error);
+    return res.status(500).json({
+      success: false,
+      result: null,
+      message: 'Internal server error',
+    });
+  }
 };
 
 module.exports = resetPassword;

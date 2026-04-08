@@ -28,6 +28,8 @@ export default function ErpCrmApp() {
   }, []);
 
   const { isSuccess: settingIsloaded } = useSelector(selectSettings);
+  const storedAuth = window.localStorage.getItem('auth');
+  console.log('[erp-app] Settings bootstrap', { settingIsloaded, storedAuth });
 
   if (settingIsloaded)
     return (

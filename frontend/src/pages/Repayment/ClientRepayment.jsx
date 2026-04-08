@@ -29,16 +29,40 @@ const normalizeRepaymentStatus = (status) => {
 
 // ── KEY FIX: computes the REAL display status including past-due logic ────────
 const getDisplayStatus = (item) => {
-  const today  = new Date();
-  const due    = new Date(item?.date);
-  const status = normalizeRepaymentStatus(item?.status);
+  const today = new Date();
+  const due = new Date(item?.date);
   today.setHours(0, 0, 0, 0);
   due.setHours(0, 0, 0, 0);
-  if (status === 'paid')    return 'paid';
-  if (status === 'late')    return 'late';
-  if (status === 'partial') return 'partial';
-  if (today < due)          return 'not-started';
-  return 'default'; // ← past due and unpaid = default
+
+  const amount = Number(item?.amount || 0);
+  const amountPaid = Number(item?.amountPaid || 0);
+
+  if (amount > 0 && amountPaid >= amount) {
+    const paidDate = item?.paymentDate || item?.paidDate;
+    if (paidDate) {
+      const paidAt = new Date(paidDate);
+      paidAt.setHours(0, 0, 0, 0);
+      if (paidAt > due) return 'late';
+      return 'paid';
+    }
+    return 'paid';
+  }
+
+  if (amountPaid > 0 && amountPaid < amount) {
+    if (due < today) return 'late';
+    return 'partial';
+  }
+
+  if (amountPaid === 0) {
+    if (due < today) return 'default';
+    return 'not-started';
+  }
+
+  if (normalizeRepaymentStatus(item?.status) === 'paid') return 'paid';
+  if (normalizeRepaymentStatus(item?.status) === 'late') return 'late';
+  if (normalizeRepaymentStatus(item?.status) === 'partial') return 'partial';
+
+  return 'not-started';
 };
 
 const STATUS_COLORS = {
@@ -81,19 +105,25 @@ export default function ClientRepayment() {
   const [form]                                  = Form.useForm();
   const [localRepayments,  setLocalRepayments]  = useState([]);
 
-  const formatRepaymentPayload = (values) => ({
-    ...values,
-    amountPaid:
-      (values.status === 'paid' || values.status === 'late') && !values.amountPaid
-        ? values.amount
-        : values.amountPaid,
-    date: values.date ? dayjs(values.date).toISOString() : undefined,
-    paymentDate: values.paymentDate
-      ? dayjs(values.paymentDate).toISOString()
-      : (values.status === 'paid' || values.status === 'late')
-        ? new Date().toISOString()
-        : null,
-  });
+  const formatRepaymentPayload = (values) => {
+    const amountPaid = values.amountPaid !== undefined 
+      ? values.amountPaid 
+      : (currentRepayment?.amountPaid ?? 0);
+    
+    return {
+      ...values,
+      amountPaid:
+        (values.status === 'paid' || values.status === 'late') && !amountPaid
+          ? values.amount
+          : amountPaid,
+      date: values.date ? dayjs(values.date).toISOString() : undefined,
+      paymentDate: values.paymentDate
+        ? dayjs(values.paymentDate).toISOString()
+        : (values.status === 'paid' || values.status === 'late')
+          ? new Date().toISOString()
+          : null,
+    };
+  };
 
   const mergeRepaymentIntoState = (repayment) => {
     setLocalRepayments((prev) =>
@@ -305,7 +335,11 @@ export default function ClientRepayment() {
         title={translate('Edit Repayment')}
         open={isModalOpen}
         onOk={handleModalOk}
-        onCancel={() => setIsModalOpen(false)}
+        onCancel={() => {
+          form.resetFields();
+          setIsModalOpen(false);
+        }}
+        destroyOnClose
       >
         <Form form={form} layout="vertical">
           <RepaymentForm isUpdateForm={true} />

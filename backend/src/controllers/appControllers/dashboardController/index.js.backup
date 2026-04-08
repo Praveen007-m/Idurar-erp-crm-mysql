@@ -1,3 +1,0 @@
-// Full backup of original file before dashboard replacement
-// Date: $(new Date().toISOString())
-${require('fs').readFileSync('backend/src/controllers/appControllers/dashboardController/index.js', 'utf8')}

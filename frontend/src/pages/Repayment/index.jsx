@@ -40,15 +40,39 @@ const normalizeRepaymentStatus = (status) => {
 // ── KEY FIX: computes the REAL display status including past-due logic ────────
 const getDisplayStatus = (repayment) => {
   const today = new Date();
-  const due   = new Date(repayment?.date);
-  const status = normalizeRepaymentStatus(repayment?.status);
+  const due = new Date(repayment?.date);
   today.setHours(0, 0, 0, 0);
   due.setHours(0, 0, 0, 0);
-  if (status === 'paid')    return 'paid';
-  if (status === 'late')    return 'late';
-  if (status === 'partial') return 'partial';
-  if (today < due)          return 'not-started';
-  return 'default'; // ← past due and not paid = default
+
+  const amount = Number(repayment?.amount || 0);
+  const amountPaid = Number(repayment?.amountPaid || 0);
+
+  if (amount > 0 && amountPaid >= amount) {
+    const paidDate = repayment?.paymentDate || repayment?.paidDate;
+    if (paidDate) {
+      const paidAt = new Date(paidDate);
+      paidAt.setHours(0, 0, 0, 0);
+      if (paidAt > due) return 'late';
+      return 'paid';
+    }
+    return 'paid';
+  }
+
+  if (amountPaid > 0 && amountPaid < amount) {
+    if (due < today) return 'late';
+    return 'partial';
+  }
+
+  if (amountPaid === 0) {
+    if (due < today) return 'default';
+    return 'not-started';
+  }
+
+  if (normalizeRepaymentStatus(repayment?.status) === 'paid') return 'paid';
+  if (normalizeRepaymentStatus(repayment?.status) === 'late') return 'late';
+  if (normalizeRepaymentStatus(repayment?.status) === 'partial') return 'partial';
+
+  return 'not-started';
 };
 
 const getStatusClassName      = (r) => `status-${getDisplayStatus(r)}`;
@@ -268,9 +292,15 @@ export default function Repayment() {
   const goToNextWeek     = useCallback(() => setCurrentDate((p) => p.add(1, 'week')),      []);
   const goToToday        = useCallback(() => setCurrentDate(dayjs()),                        []);
 
-  const formatRepaymentPayload = (values) => {
+  const formatRepaymentPayload = (values, existingRepayment = null) => {
     const payload = { ...values };
     payload.client = resolveClientId(payload.client);
+    
+    // Always preserve amountPaid — use from form, or fallback to existing repayment
+    if (payload.amountPaid === undefined && existingRepayment) {
+      payload.amountPaid = existingRepayment.amountPaid;
+    }
+    
     if (['paid', 'late'].includes(payload.status) && !payload.amountPaid)
       payload.amountPaid = payload.amount;
     payload.date = payload.date ? dayjs(payload.date).toISOString() : undefined;
@@ -368,7 +398,7 @@ export default function Repayment() {
         const updateResponse = await request.update({
           entity:   'repayment',
           id:       editingRepayment._id,
-          jsonData: formatRepaymentPayload(values),
+          jsonData: formatRepaymentPayload(values, editingRepayment),
         });
         if (!updateResponse?.success || !updateResponse?.result) {
           notification.error({ message: translate('Update failed'), description: updateResponse?.message });
