@@ -5,6 +5,7 @@ import { logout as logoutAction } from '@/redux/auth/actions';
 import { crud } from '@/redux/crud/actions';
 import { erp } from '@/redux/erp/actions';
 import PageLoader from '@/components/PageLoader';
+import { clearDashboardPinLock } from '@/utils/dashboardPin';
 
 const Logout = () => {
   const dispatch = useDispatch();
@@ -14,6 +15,7 @@ const Logout = () => {
   }
 
   useLayoutEffect(() => {
+    clearDashboardPinLock();
     dispatch(crud.resetState());
     dispatch(erp.resetState());
   }, []);

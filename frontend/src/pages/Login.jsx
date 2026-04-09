@@ -12,6 +12,7 @@ import { selectAuth, selectCurrentAdmin } from '@/redux/auth/selectors';
 import LoginForm from '@/forms/LoginForm';
 import Loading from '@/components/Loading';
 import AuthModule from '@/modules/AuthModule';
+import { clearDashboardPinLock } from '@/utils/dashboardPin';
 
 const LoginPage = () => {
   const translate = useLanguage();
@@ -22,6 +23,7 @@ const LoginPage = () => {
   const dispatch = useDispatch();
 
   const onFinish = (values) => {
+    clearDashboardPinLock();
     console.log('[login] Submitting login form', { email: values?.email, remember: values?.remember });
     dispatch(login({ loginData: values }));
   };

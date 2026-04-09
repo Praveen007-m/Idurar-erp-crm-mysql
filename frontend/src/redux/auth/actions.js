@@ -1,6 +1,7 @@
 import * as actionTypes from './types';
 import * as authService from '@/auth';
 import { request } from '@/request';
+import { clearDashboardPinLock } from '@/utils/dashboardPin';
 
 const normalizeAuthResult = (payload = {}) => {
   const current = payload.result || payload.current || {};
@@ -39,6 +40,7 @@ const persistAuthState = (payload = {}) => {
 export const login =
   ({ loginData }) =>
   async (dispatch) => {
+    clearDashboardPinLock();
     dispatch({
       type: actionTypes.REQUEST_LOADING,
     });
@@ -120,6 +122,7 @@ export const resetPassword =
   };
 
 export const logout = () => async (dispatch) => {
+  clearDashboardPinLock();
   dispatch({
     type: actionTypes.LOGOUT_SUCCESS,
   });
