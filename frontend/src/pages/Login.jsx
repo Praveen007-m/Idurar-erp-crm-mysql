@@ -33,7 +33,7 @@ const LoginPage = () => {
       if (currentAdmin.role === 'staff') {
         navigate('/customer');
       } else {
-        navigate('/');
+        navigate('/customer');
       }
     }
   }, [isSuccess, currentAdmin, navigate]);

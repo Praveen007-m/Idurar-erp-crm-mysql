@@ -193,26 +193,19 @@ const listClients = async ({ query, admin }) => {
     }
   }
 
-  if (query.q && query.fields) {
-    const searchFields = query.fields
-      .split(',')
-      .map((item) => item.trim())
-      .map((field) => {
-        const map = {
-          name: 'c.name',
-          email: 'c.email',
-          phone: 'c.phone',
-          country: 'c.country',
-          address: 'c.address',
-        };
-        return map[field];
-      })
-      .filter(Boolean);
+  // 🔥 Always search on these fields
+  if (query.q && query.q.trim() !== '') {
+    const searchValue = `%${query.q}%`;
 
-    if (searchFields.length > 0) {
-      where.push(`(${searchFields.map((field) => `${field} LIKE ?`).join(' OR ')})`);
-      searchFields.forEach(() => params.push(`%${query.q}%`));
-    }
+    where.push(`
+      (
+        c.name LIKE ?
+        OR c.phone LIKE ?
+        OR c.email LIKE ?
+      )
+    `);
+
+    params.push(searchValue, searchValue, searchValue);
   }
 
   if (admin.role === 'staff') {

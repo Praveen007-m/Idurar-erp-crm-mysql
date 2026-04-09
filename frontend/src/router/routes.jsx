@@ -58,8 +58,8 @@ let routes = {
     {
       path: '/',
       element: (
-        <ProtectedRoute allowedRoles={['owner', 'admin']}>
-          <Dashboard />
+        <ProtectedRoute allowedRoles={['owner', 'admin', 'staff']}>
+          <Navigate to="/customer" />
         </ProtectedRoute>
       ),
     },
