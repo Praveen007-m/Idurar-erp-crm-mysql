@@ -1,7 +1,14 @@
 const moment = require('moment');
 
 const db = require('@/services/dbService');
-const { normalizeNumber, normalizePhone, mapClient, toMysqlDateTime } = require('@/services/mysql/common');
+const {
+  normalizeNumber,
+  normalizePhone,
+  normalizeTimeString,
+  mapClient,
+  safeJsonParse,
+  toMysqlDateTime,
+} = require('@/services/mysql/common');
 const { buildInstallmentSchedule } = require('@/utils/installmentSchedule');
 const { computeBalance, computeStatus } = require('@/services/mysql/repaymentDomainService');
 
@@ -84,7 +91,6 @@ const createRepaymentRows = async (tx, client) => {
     term: client.term,
     startDate: client.startDate,
     repaymentType: client.repaymentType,
-    interestType: client.interestType,
     createdBy: client.createdBy,
   });
 
@@ -123,49 +129,121 @@ const createRepaymentRows = async (tx, client) => {
   }
 };
 
+// ✅ FIX: Added debug log to confirm collectionTime is received from frontend
+const normalizeClientBody = (body = {}) => {
+  console.log('[DEBUG] backend received collectionTime:', body.collectionTime); // 🔍 temp debug log — remove after fix confirmed
+
+  const paymentDetails =
+    typeof body.paymentDetails === 'string'
+      ? safeJsonParse(body.paymentDetails, {})
+      : body.paymentDetails || {};
+
+  return {
+    ...body,
+    collectionTime: normalizeTimeString(body.collectionTime),
+    paymentDetails: paymentDetails && typeof paymentDetails === 'object' ? paymentDetails : {},
+  };
+};
+
+const getMissingClientColumn = (error) => {
+  if (error?.code !== 'ER_BAD_FIELD_ERROR') return null;
+  const message = error?.sqlMessage || error?.message || '';
+  const match = message.match(/Unknown column '([^']+)'/i);
+  return match?.[1] || null;
+};
+
+const createClientRecord = async ({ tx, body, admin, optionalColumns = { collection_time: true, photo: true } }) => {
+  const insertColumns = [
+    'removed',
+    'enabled',
+    'name',
+    'phone',
+    'country',
+    'address',
+    'email',
+    'loan_amount',
+    'interest_rate',
+    'term',
+    'start_date',
+    'end_date',
+    'repayment_type',
+  ];
+
+  const insertValues = [
+    0,
+    body.enabled === undefined ? 1 : Number(Boolean(body.enabled)),
+    body.name,
+    normalizePhone(body.phone),
+    body.country || '',
+    body.address || '',
+    body.email || '',
+    normalizeNumber(body.loanAmount),
+    normalizeNumber(body.interestRate),
+    String(body.term),
+    toMysqlDateTime(body.startDate),
+    toMysqlDateTime(body.endDate),
+    body.repaymentType,
+  ];
+
+  if (optionalColumns.collection_time) {
+    insertColumns.push('collection_time');
+    insertValues.push(body.collectionTime || null); // ✅ FIX: ensure null fallback
+  }
+
+  if (optionalColumns.photo) {
+    insertColumns.push('photo');
+    insertValues.push(body.photo || null);
+  }
+
+  insertColumns.push('status', 'created_by', 'assigned', 'created', 'updated');
+  insertValues.push(body.status || 'active', admin._id || admin.id, body.assigned, 'NOW()', 'NOW()');
+
+  const sql = `INSERT INTO clients (${insertColumns.join(', ')})
+    VALUES (${insertColumns.map((column) => (column === 'created' || column === 'updated' ? 'NOW()' : '?')).join(', ')})`;
+
+  return tx.run(sql, insertValues.filter((_, index) => insertColumns[index] !== 'created' && insertColumns[index] !== 'updated'));
+};
+
+const retryCreateClientRecord = async ({ tx, body, admin }) => {
+  let optionalColumns = { collection_time: true, photo: true };
+
+  try {
+    return await createClientRecord({ tx, body, admin, optionalColumns });
+  } catch (error) {
+    const missingColumn = getMissingClientColumn(error);
+    if (!missingColumn || !Object.prototype.hasOwnProperty.call(optionalColumns, missingColumn)) {
+      throw error;
+    }
+
+    optionalColumns = { ...optionalColumns, [missingColumn]: false };
+    return createClientRecord({ tx, body, admin, optionalColumns });
+  }
+};
+
 const createClient = async ({ body, admin }) =>
   db.transaction(async (tx) => {
-    const assigned = body.assigned || admin._id || admin.id;
+    const normalizedBody = normalizeClientBody(body);
+    const assigned = normalizedBody.assigned || admin._id || admin.id;
     const endDate = calculateClientEndDate({
-      startDate: body.startDate,
-      term: body.term,
-      repaymentType: body.repaymentType,
+      startDate: normalizedBody.startDate,
+      term: normalizedBody.term,
+      repaymentType: normalizedBody.repaymentType,
     });
 
-    const result = await tx.run(
-      `INSERT INTO clients
-       (removed, enabled, name, phone, country, address, email, loan_amount, interest_rate, term, start_date, end_date, repayment_type, interest_type, status, created_by, assigned, created, updated)
-       VALUES (0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-      [
-        body.enabled === undefined ? 1 : Number(Boolean(body.enabled)),
-        body.name,
-        normalizePhone(body.phone),
-        body.country || '',
-        body.address || '',
-        body.email || '',
-        normalizeNumber(body.loanAmount),
-        normalizeNumber(body.interestRate),
-        String(body.term),
-        toMysqlDateTime(body.startDate),
-        toMysqlDateTime(endDate),
-        body.repaymentType,
-        body.interestType || 'reducing',
-        body.status || 'active',
-        admin._id || admin.id,
-        assigned,
-      ]
-    );
+    normalizedBody.assigned = assigned;
+    normalizedBody.endDate = endDate;
 
-    await replacePaymentDetails(tx, result.insertId, body.paymentDetails || {});
+    const result = await retryCreateClientRecord({ tx, body: normalizedBody, admin });
+
+    await replacePaymentDetails(tx, result.insertId, normalizedBody.paymentDetails || {});
 
     await createRepaymentRows(tx, {
       id: result.insertId,
-      loanAmount: body.loanAmount,
-      interestRate: body.interestRate,
-      term: body.term,
-      startDate: body.startDate,
-      repaymentType: body.repaymentType,
-      interestType: body.interestType || 'reducing',
+      loanAmount: normalizedBody.loanAmount,
+      interestRate: normalizedBody.interestRate,
+      term: normalizedBody.term,
+      startDate: normalizedBody.startDate,
+      repaymentType: normalizedBody.repaymentType,
       createdBy: admin._id || admin.id,
     });
 
@@ -245,8 +323,80 @@ const listClients = async ({ query, admin }) => {
   };
 };
 
+const updateClientRecord = async ({
+  tx,
+  id,
+  existing,
+  body,
+  admin,
+  optionalColumns = { collection_time: true, photo: true },
+}) => {
+  const updates = [
+    'enabled = ?',
+    'name = ?',
+    'phone = ?',
+    'country = ?',
+    'address = ?',
+    'email = ?',
+    'loan_amount = ?',
+    'interest_rate = ?',
+    'term = ?',
+    'start_date = ?',
+    'end_date = ?',
+    'repayment_type = ?',
+  ];
+
+  const values = [
+    body.enabled === undefined ? Number(existing.enabled) : Number(Boolean(body.enabled)),
+    body.name ?? existing.name,
+    normalizePhone(body.phone ?? existing.phone),
+    body.country ?? existing.country ?? '',
+    body.address ?? existing.address ?? '',
+    body.email ?? existing.email ?? '',
+    normalizeNumber(body.loanAmount),
+    normalizeNumber(body.interestRate),
+    String(body.term),
+    toMysqlDateTime(body.startDate),
+    toMysqlDateTime(body.endDate),
+    body.repaymentType,
+  ];
+
+  if (optionalColumns.collection_time) {
+    updates.push('collection_time = ?');
+    values.push(body.collectionTime || null); // ✅ FIX: ensure null fallback
+  }
+
+  if (optionalColumns.photo) {
+    updates.push('photo = ?');
+    values.push(body.photo || null);
+  }
+
+  updates.push('status = ?', 'assigned = ?', 'updated = NOW()');
+  values.push(body.status ?? existing.status ?? 'active', body.assigned ?? existing.assigned ?? (admin._id || admin.id));
+  values.push(id);
+
+  return tx.run(`UPDATE clients SET ${updates.join(', ')} WHERE id = ?`, values);
+};
+
+const retryUpdateClientRecord = async ({ tx, id, existing, body, admin }) => {
+  let optionalColumns = { collection_time: true, photo: true };
+
+  try {
+    return await updateClientRecord({ tx, id, existing, body, admin, optionalColumns });
+  } catch (error) {
+    const missingColumn = getMissingClientColumn(error);
+    if (!missingColumn || !Object.prototype.hasOwnProperty.call(optionalColumns, missingColumn)) {
+      throw error;
+    }
+
+    optionalColumns = { ...optionalColumns, [missingColumn]: false };
+    return updateClientRecord({ tx, id, existing, body, admin, optionalColumns });
+  }
+};
+
 const updateClient = async ({ id, body, admin }) =>
   db.transaction(async (tx) => {
+    const normalizedBody = normalizeClientBody(body);
     const existingRows = await tx.query('SELECT * FROM clients WHERE id = ? AND removed = 0 LIMIT 1', [id]);
     const existing = existingRows[0];
 
@@ -258,13 +408,17 @@ const updateClient = async ({ id, body, admin }) =>
 
     const merged = {
       ...existing,
-      ...body,
-      loanAmount: body.loanAmount ?? existing.loan_amount,
-      interestRate: body.interestRate ?? existing.interest_rate,
-      term: body.term ?? existing.term,
-      startDate: body.startDate ?? existing.start_date,
-      repaymentType: body.repaymentType ?? existing.repayment_type,
-      interestType: body.interestType ?? existing.interest_type,
+      ...normalizedBody,
+      loanAmount: normalizedBody.loanAmount ?? existing.loan_amount,
+      interestRate: normalizedBody.interestRate ?? existing.interest_rate,
+      term: normalizedBody.term ?? existing.term,
+      startDate: normalizedBody.startDate ?? existing.start_date,
+      repaymentType: normalizedBody.repaymentType ?? existing.repayment_type,
+      collectionTime:
+        normalizedBody.collectionTime !== undefined
+          ? normalizedBody.collectionTime
+          : normalizeTimeString(existing.collection_time),
+      photo: normalizedBody.photo !== undefined ? normalizedBody.photo : existing.photo,
     };
 
     const endDate = calculateClientEndDate({
@@ -273,34 +427,12 @@ const updateClient = async ({ id, body, admin }) =>
       repaymentType: merged.repaymentType,
     });
 
-    await tx.run(
-      `UPDATE clients
-       SET enabled = ?, name = ?, phone = ?, country = ?, address = ?, email = ?,
-           loan_amount = ?, interest_rate = ?, term = ?, start_date = ?, end_date = ?,
-           repayment_type = ?, interest_type = ?, status = ?, assigned = ?, updated = NOW()
-       WHERE id = ?`,
-      [
-        body.enabled === undefined ? Number(existing.enabled) : Number(Boolean(body.enabled)),
-        body.name ?? existing.name,
-        normalizePhone(body.phone ?? existing.phone),
-        body.country ?? existing.country ?? '',
-        body.address ?? existing.address ?? '',
-        body.email ?? existing.email ?? '',
-        normalizeNumber(merged.loanAmount),
-        normalizeNumber(merged.interestRate),
-        String(merged.term),
-        toMysqlDateTime(merged.startDate),
-        toMysqlDateTime(endDate),
-        merged.repaymentType,
-        merged.interestType || 'reducing',
-        body.status ?? existing.status ?? 'active',
-        body.assigned ?? existing.assigned ?? (admin._id || admin.id),
-        id,
-      ]
-    );
+    merged.endDate = endDate;
 
-    if (body.paymentDetails) {
-      await replacePaymentDetails(tx, id, body.paymentDetails);
+    await retryUpdateClientRecord({ tx, id, existing, body: merged, admin });
+
+    if (normalizedBody.paymentDetails && Object.keys(normalizedBody.paymentDetails).length > 0) {
+      await replacePaymentDetails(tx, id, normalizedBody.paymentDetails);
     }
 
     const scheduleFieldsChanged = [
@@ -309,8 +441,7 @@ const updateClient = async ({ id, body, admin }) =>
       'term',
       'startDate',
       'repaymentType',
-      'interestType',
-    ].some((field) => body[field] !== undefined);
+    ].some((field) => normalizedBody[field] !== undefined);
 
     if (scheduleFieldsChanged) {
       await tx.run(
@@ -332,7 +463,6 @@ const updateClient = async ({ id, body, admin }) =>
           term: merged.term,
           startDate: merged.startDate,
           repaymentType: merged.repaymentType,
-          interestType: merged.interestType,
           createdBy: existing.created_by,
         });
       }

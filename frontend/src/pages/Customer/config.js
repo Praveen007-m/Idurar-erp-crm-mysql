@@ -1,4 +1,6 @@
 import dayjs from 'dayjs';
+import { createElement } from 'react';
+import CustomerAvatar from '@/components/CustomerAvatar';
 
 const calculateFallbackEndDate = (startDate, term, repaymentType) => {
   if (!startDate || !term || !repaymentType) return null;
@@ -34,6 +36,17 @@ const getComputedEndDate = (record) => {
 };
 
 export const fields = {
+  // ✅ FIX: pass both `photo` AND `name` so CustomerAvatar can show initials as fallback
+  // The render receives (value, record) — value here is record.photo (the filename string)
+  photo: {
+    label: 'Photo',
+    render: (value, record) =>
+      createElement(CustomerAvatar, {
+        photo: value || record?.photo,  // ✅ FIX: use `value` directly (it IS the photo field)
+        name: record?.name,
+        size: 36,
+      }),
+  },
   name: {
     type: 'string',
   },
@@ -57,6 +70,14 @@ export const fields = {
   },
   startDate: {
     type: 'date',
+  },
+  collectionTime: {
+    label: 'Collection',
+    render: (time) => {
+      if (!time) return '-';
+      return dayjs(time, 'HH:mm:ss').format('hh:mm A');
+    },
+    sorter: (a, b) => (a?.collectionTime || '').localeCompare(b?.collectionTime || ''),
   },
   endDate: {
     label: 'Ending Date',

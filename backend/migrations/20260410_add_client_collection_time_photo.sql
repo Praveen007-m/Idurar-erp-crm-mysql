@@ -1,0 +1,3 @@
+ALTER TABLE clients
+  ADD COLUMN collection_time VARCHAR(8) NULL,
+  ADD COLUMN photo VARCHAR(255) NULL;

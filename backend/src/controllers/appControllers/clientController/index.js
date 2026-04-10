@@ -1,10 +1,30 @@
 const clientService = require('@/services/mysql/clientService');
 
+const normalizeMultipartBody = (body = {}) => {
+  const normalized = { ...body };
+  let paymentDetails = {};
+
+  try {
+    paymentDetails = JSON.parse(body.paymentDetails || '{}');
+  } catch (error) {
+    paymentDetails = {};
+  }
+
+  normalized.paymentDetails = paymentDetails;
+
+  return normalized;
+};
+
 function modelController() {
   const methods = {};
 
   methods.create = async (req, res) => {
     try {
+      console.log('[DEBUG] client create req.file:', req.file || null);
+      console.log('[DEBUG] client create req.body:', req.body);
+      const photoPath = req.file ? `/uploads/clients/${req.file.filename}` : req.body.photo || null;
+      const body = normalizeMultipartBody({ ...req.body, photo: photoPath });
+
       if (req.admin.role === 'staff') {
         return res.status(403).json({
           success: false,
@@ -13,7 +33,7 @@ function modelController() {
         });
       }
 
-      const result = await clientService.createClient({ body: req.body, admin: req.admin });
+      const result = await clientService.createClient({ body, admin: req.admin });
       return res.status(200).json({
         success: true,
         result,
@@ -51,6 +71,11 @@ function modelController() {
 
   methods.update = async (req, res) => {
     try {
+      console.log('[DEBUG] client update req.file:', req.file || null);
+      console.log('[DEBUG] client update req.body:', req.body);
+      const photoPath = req.file ? `/uploads/clients/${req.file.filename}` : req.body.photo || null;
+      const body = normalizeMultipartBody({ ...req.body, photo: photoPath });
+
       if (req.admin.role === 'staff') {
         return res.status(403).json({
           success: false,
@@ -59,7 +84,11 @@ function modelController() {
         });
       }
 
-      const result = await clientService.updateClient({ id: req.params.id, body: req.body, admin: req.admin });
+      const result = await clientService.updateClient({
+        id: req.params.id,
+        body,
+        admin: req.admin,
+      });
       return res.status(200).json({
         success: true,
         result,

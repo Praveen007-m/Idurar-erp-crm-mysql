@@ -30,17 +30,72 @@ export default function UpdateForm({ config, formElements, withUpload = false, o
   /////
   const [form] = Form.useForm();
 
+  const serializeValue = (key, value) => {
+    if (value === undefined || value === null) return null;
+
+    if (key === 'paymentDetails') {
+      return JSON.stringify(value || {});
+    }
+
+    if (key === 'assigned' && typeof value === 'object') {
+      return value?._id || value?.id || null;
+    }
+
+    if (dayjs.isDayjs(value)) {
+      return value.toISOString();
+    }
+
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+
+    if (typeof value === 'object') {
+      return null;
+    }
+
+    return String(value);
+  };
+
   const onSubmit = (fieldsValue) => {
     const id = current._id;
+    const payload = { ...fieldsValue };
 
-    if (fieldsValue.file && withUpload) {
-      fieldsValue.file = fieldsValue.file[0].originFileObj;
+    if (payload.collectionTime?.format) {
+      payload.collectionTime = payload.collectionTime.format('HH:mm:ss');
+    }
+
+    delete payload.interestType;
+
+    if (withUpload) {
+      const uploadedFile = Array.isArray(payload.file) ? payload.file[0]?.originFileObj : null;
+
+      const formData = new FormData();
+
+      Object.entries(payload).forEach(([key, value]) => {
+        if (key === 'file') return;
+        if (Array.isArray(value)) return;
+
+        const serializedValue = serializeValue(key, value);
+        if (serializedValue !== null) {
+          formData.append(key, serializedValue);
+        }
+      });
+
+      if (uploadedFile) {
+        formData.append('file', uploadedFile);
+      }
+
+      console.log('[DEBUG] update client values:', payload);
+      console.log('[DEBUG] update client FormData:', Array.from(formData.entries()));
+
+      dispatch(crud.update({ entity, id, jsonData: formData, withUpload }));
+      return;
     }
     // const trimmedValues = Object.keys(fieldsValue).reduce((acc, key) => {
     //   acc[key] = typeof fieldsValue[key] === 'string' ? fieldsValue[key].trim() : fieldsValue[key];
     //   return acc;
     // }, {});
-    dispatch(crud.update({ entity, id, jsonData: fieldsValue, withUpload }));
+    dispatch(crud.update({ entity, id, jsonData: payload, withUpload }));
   };
   useEffect(() => {
     if (current) {
@@ -75,16 +130,36 @@ export default function UpdateForm({ config, formElements, withUpload = false, o
           created: dayjs(newValues['created']),
         };
       }
+      if (newValues.collectionTime) {
+        newValues = {
+          ...newValues,
+          collectionTime: dayjs(newValues.collectionTime, 'HH:mm:ss'),
+        };
+      }
       if (newValues.updated) {
         newValues = {
           ...newValues,
           updated: dayjs(newValues['updated']),
         };
       }
+      if (withUpload && newValues.photo) {
+        const fileName = String(newValues.photo).split('/').pop() || 'photo';
+        newValues = {
+          ...newValues,
+          file: [
+            {
+              uid: '-1',
+              name: fileName,
+              status: 'done',
+              url: newValues.photo,
+            },
+          ],
+        };
+      }
       form.resetFields();
       form.setFieldsValue(newValues);
     }
-  }, [current]);
+  }, [current, form, withUpload]);
 
   useEffect(() => {
     if (isSuccess) {
@@ -114,7 +189,7 @@ export default function UpdateForm({ config, formElements, withUpload = false, o
       <Loading isLoading={isLoading}>
         <Form form={form} layout="vertical" onFinish={onSubmit}>
           {typeof formElements === 'function'
-            ? formElements({ onCancel: handleCancel, loading: isLoading, isUpdateForm: true })
+            ? formElements({ onCancel: handleCancel, loading: isLoading, isUpdateForm: true, form })
             : formElements}
         </Form>
       </Loading>

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import dayjs from 'dayjs';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { crud } from '@/redux/crud/actions';
@@ -15,6 +16,32 @@ export default function CreateForm({ config, formElements, withUpload = false, o
   const { panel, collapsedBox, readBox } = crudContextAction;
   const [form] = Form.useForm();
 
+  const serializeValue = (key, value) => {
+    if (value === undefined || value === null) return null;
+
+    if (key === 'paymentDetails') {
+      return JSON.stringify(value || {});
+    }
+
+    if (key === 'assigned' && typeof value === 'object') {
+      return value?._id || value?.id || null;
+    }
+
+    if (dayjs.isDayjs(value)) {
+      return value.toISOString();
+    }
+
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+
+    if (typeof value === 'object') {
+      return null;
+    }
+
+    return String(value);
+  };
+
   const handleCancel = () => {
     if (onCancel) {
       onCancel();
@@ -28,10 +55,38 @@ export default function CreateForm({ config, formElements, withUpload = false, o
   };
 
   const onSubmit = (fieldsValue) => {
-    // Manually trim values before submission
+    const payload = { ...fieldsValue };
 
-    if (fieldsValue.file && withUpload) {
-      fieldsValue.file = fieldsValue.file[0].originFileObj;
+    if (payload.collectionTime?.format) {
+      payload.collectionTime = payload.collectionTime.format('HH:mm:ss');
+    }
+
+    delete payload.interestType;
+
+    if (withUpload) {
+      const uploadedFile = Array.isArray(payload.file) ? payload.file[0]?.originFileObj : null;
+
+      const formData = new FormData();
+
+      Object.entries(payload).forEach(([key, value]) => {
+        if (key === 'file') return;
+        if (Array.isArray(value)) return;
+
+        const serializedValue = serializeValue(key, value);
+        if (serializedValue !== null) {
+          formData.append(key, serializedValue);
+        }
+      });
+
+      if (uploadedFile) {
+        formData.append('file', uploadedFile);
+      }
+
+      console.log('[DEBUG] create client values:', payload);
+      console.log('[DEBUG] create client FormData:', Array.from(formData.entries()));
+
+      dispatch(crud.create({ entity, jsonData: formData, withUpload }));
+      return;
     }
 
     // const trimmedValues = Object.keys(fieldsValue).reduce((acc, key) => {
@@ -39,7 +94,7 @@ export default function CreateForm({ config, formElements, withUpload = false, o
     //   return acc;
     // }, {});
 
-    dispatch(crud.create({ entity, jsonData: fieldsValue, withUpload }));
+    dispatch(crud.create({ entity, jsonData: payload, withUpload }));
   };
 
   useEffect(() => {
@@ -74,7 +129,7 @@ export default function CreateForm({ config, formElements, withUpload = false, o
     <Loading isLoading={isLoading}>
       <Form form={form} layout="vertical" onFinish={onSubmit}>
         {typeof formElements === 'function'
-          ? formElements({ onCancel: handleCancel, loading: isLoading, isUpdateForm: false })
+          ? formElements({ onCancel: handleCancel, loading: isLoading, isUpdateForm: false, form })
           : formElements}
       </Form>
     </Loading>

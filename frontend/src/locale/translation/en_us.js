@@ -461,7 +461,6 @@ const lang = {
   active: 'Active',
   defaulted: 'Defaulted',
   late_payment: 'Late Payment',
-  interestType: 'Interest Type',
   reducing_balance: 'Reducing Balance',
   flat_rate: 'Flat Rate',
   principal: 'Principal',

@@ -370,7 +370,6 @@ const getRepaymentByClientAndDate = async ({ clientId, date, admin }) => {
     term: client.term,
     startDate: client.start_date,
     repaymentType: client.repayment_type,
-    interestType: client.interest_type,
     createdBy: client.created_by,
   });
 

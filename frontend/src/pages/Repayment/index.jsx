@@ -24,6 +24,7 @@ import { request } from '@/request';
 import useLanguage from '@/locale/useLanguage';
 import RepaymentForm from '@/forms/RepaymentForm';
 import { repaymentStatusColor } from '@/utils/repaymentStatusColor';
+import { getRepaymentCalendarStyle } from '@/utils/repaymentCalendarStyle';
 
 const BOX_BORDER = '#28a7ab';
 const BOX_TEXT  = '#117a8b';
@@ -75,7 +76,6 @@ const getDisplayStatus = (repayment) => {
   return 'not-started';
 };
 
-const getStatusClassName      = (r) => `status-${getDisplayStatus(r)}`;
 const displayStatusPriority   = { default: 1, late: 2, partial: 3, paid: 4, 'not-started': 5 };
 const roundCurrency           = (v) => Number.parseFloat(Number(v || 0).toFixed(2));
 
@@ -104,10 +104,6 @@ const buildRepaymentPayloadFromClient = (client, dueDate) => {
     };
   }
 
-  let totalMonths = installmentCount;
-  if (client?.repaymentType === 'Weekly') totalMonths = installmentCount / 4.33;
-  if (client?.repaymentType === 'Daily')  totalMonths = installmentCount / 30;
-
   const principalPerInstallment = installmentCount > 0 ? principal / installmentCount : 0;
   let durationUnit = 'month';
   let periodsPerMonth = 1;
@@ -122,32 +118,18 @@ const buildRepaymentPayloadFromClient = (client, dueDate) => {
 
   const schedule = [];
 
-  if (client?.interestType === 'flat') {
-    const totalInterest = principal * monthlyRate * totalMonths;
-    const interestPerInstallment = installmentCount > 0 ? totalInterest / installmentCount : 0;
+  const periodRate = periodsPerMonth > 0 ? monthlyRate / periodsPerMonth : monthlyRate;
+  let outstanding = principal;
 
-    for (let index = 1; index <= installmentCount; index += 1) {
-      schedule.push({
-        date: start.add(index, durationUnit).format('YYYY-MM-DD'),
-        principal: roundCurrency(principalPerInstallment),
-        interest: roundCurrency(interestPerInstallment),
-        amount: roundCurrency(principalPerInstallment + interestPerInstallment),
-      });
-    }
-  } else {
-    const periodRate = periodsPerMonth > 0 ? monthlyRate / periodsPerMonth : monthlyRate;
-    let outstanding = principal;
-
-    for (let index = 1; index <= installmentCount; index += 1) {
-      const interest = outstanding * periodRate;
-      schedule.push({
-        date: start.add(index, durationUnit).format('YYYY-MM-DD'),
-        principal: roundCurrency(principalPerInstallment),
-        interest: roundCurrency(interest),
-        amount: roundCurrency(principalPerInstallment + interest),
-      });
-      outstanding = Math.max(0, outstanding - principalPerInstallment);
-    }
+  for (let index = 1; index <= installmentCount; index += 1) {
+    const interest = outstanding * periodRate;
+    schedule.push({
+      date: start.add(index, durationUnit).format('YYYY-MM-DD'),
+      principal: roundCurrency(principalPerInstallment),
+      interest: roundCurrency(interest),
+      amount: roundCurrency(principalPerInstallment + interest),
+    });
+    outstanding = Math.max(0, outstanding - principalPerInstallment);
   }
 
   const selectedInstallment =
@@ -529,7 +511,9 @@ export default function Repayment() {
                   style={{ width: '100%', marginBottom: 12, marginTop: 8 }} />
                 <div className="weekly-calendar">
                   {weekDays.map((day) => {
-                    const dayClients = filteredClients.filter((c) => Boolean(getPaymentStatus(c, day)));
+                    const dayClients = filteredClients.filter((client) =>
+                      getDueDatesForClientInMonth(client, day).includes(day.date())
+                    );
                     return (
                       <div key={day.format('YYYY-MM-DD')} className="week-day">
                         <div className="week-date" style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
@@ -538,11 +522,19 @@ export default function Repayment() {
                         {dayClients.length ? dayClients.map((client) => {
                           const repayment  = getPaymentStatus(client, day);
                           const forDisplay = repayment || { status: 'not-started', date: day.toDate() };
+                          const normalizedDisplayStatus = getDisplayStatus(forDisplay);
+                          const calendarStyle = getRepaymentCalendarStyle(forDisplay, normalizedDisplayStatus);
                           return (
                             <div key={`${client._id}-${day.format('YYYY-MM-DD')}`}
-                              className={`week-entry ${getStatusClassName(forDisplay)}`}
                               onClick={() => handleClientClick(client, day.format('YYYY-MM-DD'), repayment)}
-                              style={{ cursor: 'pointer', fontSize: 13, padding: '4px 8px', borderRadius: 4, marginBottom: 4 }}>
+                              style={{
+                                ...calendarStyle.style,
+                                cursor: 'pointer',
+                                fontSize: 13,
+                                padding: '4px 8px',
+                                borderRadius: 4,
+                                marginBottom: 4,
+                              }}>
                               {client?.name}
                             </div>
                           );
@@ -569,14 +561,17 @@ export default function Repayment() {
                   const PREVIEW    = 2;
                   const visible    = isExpanded ? dayClients : dayClients.slice(0, PREVIEW);
                   const hidden     = Math.max(dayClients.length - PREVIEW, 0);
+                  const isToday = date.isSame(dayjs(), 'day');
                   return (
                     <div className="calendar-cell" style={{
                       minHeight: 110, padding: 6, borderRadius: 8,
-                      border: dayClients.length ? '1px solid rgba(40,167,171,0.28)' : '1px solid #f0f0f0',
-                      background: dayClients.length ? '#fcffff' : '#ffffff',
+                      border: isToday ? '1px solid #1677ff' : dayClients.length ? '1px solid rgba(40,167,171,0.28)' : '1px solid #f0f0f0',
+                      background: isToday ? '#e6f4ff' : dayClients.length ? '#fcffff' : '#ffffff',
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography.Text strong style={{ fontSize: 12 }}>{date.date()}</Typography.Text>
+                        <Typography.Text strong style={{ fontSize: 12, color: isToday ? '#1677ff' : undefined }}>
+                          {date.date()}
+                        </Typography.Text>
                         {dayClients.length ? (
                           <Badge count={dayClients.length}
                             style={{ backgroundColor: BOX_BORDER, boxShadow: 'none', fontSize: 10 }} />
@@ -586,12 +581,22 @@ export default function Repayment() {
                         {visible.map((client) => {
                           const repayment  = getPaymentStatus(client, date);
                           const forDisplay = repayment || { status: 'not-started', date: date.toDate() };
+                          const normalizedDisplayStatus = getDisplayStatus(forDisplay);
+                          const calendarStyle = getRepaymentCalendarStyle(forDisplay, normalizedDisplayStatus);
                           return (
                             <button type="button"
                               key={`${client._id}-${date.date()}`}
-                              className={`calendar-client-entry ${getStatusClassName(forDisplay)}`}
                               onClick={(e) => { e.stopPropagation(); handleClientClick(client, date.format('YYYY-MM-DD'), repayment); }}
-                              style={{ fontSize: 11, width: '100%', textAlign: 'left' }}>
+                              style={{
+                                ...calendarStyle.style,
+                                fontSize: 11,
+                                width: '100%',
+                                textAlign: 'left',
+                                borderRadius: 8,
+                                padding: '6px 4px',
+                                marginTop: 4,
+                                cursor: 'pointer',
+                              }}>
                               {client?.name}
                             </button>
                           );

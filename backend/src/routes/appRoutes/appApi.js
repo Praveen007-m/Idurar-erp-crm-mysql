@@ -1,4 +1,7 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
 const { catchErrors } = require('@/handlers/errorHandlers');
 
 const appControllers = require('@/controllers/appControllers');
@@ -16,10 +19,58 @@ router.route('/admin/updateStaff/:id').patch(checkRole(['admin', 'owner']), catc
 router.route('/admin/deleteStaff/:id').delete(checkRole(['admin', 'owner']), catchErrors(adminController.deleteStaff));
 router.route('/admin/listAllStaff').get(checkRole(['admin', 'owner']), catchErrors(adminController.listAllStaff));
 
+const clientsUploadDir = path.join(process.cwd(), 'uploads', 'clients');
+if (!fs.existsSync(clientsUploadDir)) {
+  fs.mkdirSync(clientsUploadDir, { recursive: true });
+}
+
+const clientPhotoUploader = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, clientsUploadDir),
+    filename: (_req, file, cb) => {
+      const extension = path.extname(file.originalname || '').toLowerCase() || '.png';
+      const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}${extension}`;
+      cb(null, unique);
+    },
+  }),
+  fileFilter: (_req, file, cb) => {
+    if (!file?.mimetype?.startsWith('image/')) {
+      return cb(new Error('Only image files are allowed'));
+    }
+    return cb(null, true);
+  },
+  limits: { fileSize: 5 * 1024 * 1024 },
+}).single('file');
+
+const clientPhotoUpload = (req, res, next) => {
+  clientPhotoUploader(req, res, (err) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        result: null,
+        message: err.message || 'File upload failed',
+      });
+    }
+
+    const file = req.file || null;
+
+    if (file) {
+      req.body.photo = `/uploads/clients/${file.filename}`;
+    }
+
+    return next();
+  });
+};
+
+router.route('/client/create').post(clientPhotoUpload, catchErrors(appControllers.clientController.create));
+router.route('/client/update/:id').patch(clientPhotoUpload, catchErrors(appControllers.clientController.update));
+
 const routerApp = (entity, controller) => {
-  router.route(`/${entity}/create`).post(catchErrors(controller.create));
+  if (entity !== 'client') {
+    router.route(`/${entity}/create`).post(catchErrors(controller.create));
+    router.route(`/${entity}/update/:id`).patch(catchErrors(controller.update));
+  }
   router.route(`/${entity}/read/:id`).get(catchErrors(controller.read));
-  router.route(`/${entity}/update/:id`).patch(catchErrors(controller.update));
   router.route(`/${entity}/delete/:id`).delete(catchErrors(controller.delete));
   router.route(`/${entity}/search`).get(catchErrors(controller.search));
   router.route(`/${entity}/list`).get(catchErrors(controller.list));

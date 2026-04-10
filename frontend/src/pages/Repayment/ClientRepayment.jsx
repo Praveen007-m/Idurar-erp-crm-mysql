@@ -18,6 +18,7 @@ import { erp } from '@/redux/erp/actions';
 import { ArrowLeftOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { ErpLayout } from '@/layout';
 import RepaymentForm from '@/forms/RepaymentForm';
+import CustomerAvatar from '@/components/CustomerAvatar';
 
 const normalizeRepaymentStatus = (status) => {
   const s = String(status || '').trim().toLowerCase();
@@ -357,6 +358,7 @@ export default function ClientRepayment() {
         {client && (
           <>
             <Descriptions title="Basic Info" bordered column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }} style={{ marginBottom: 20 }}>
+              <Descriptions.Item label="Photo"><CustomerAvatar photo={client.photo} name={client.name} size={72} /></Descriptions.Item>
               <Descriptions.Item label="Name">{client.name}</Descriptions.Item>
               <Descriptions.Item label="Phone">{client.phone}</Descriptions.Item>
               <Descriptions.Item label="Email">{client.email || '-'}</Descriptions.Item>
@@ -371,7 +373,9 @@ export default function ClientRepayment() {
               <Descriptions.Item label="Start Date">{dayjs(client.startDate).format(dateFormat)}</Descriptions.Item>
               <Descriptions.Item label="Ending Date">{client.endDate ? dayjs(client.endDate).format(dateFormat) : '-'}</Descriptions.Item>
               <Descriptions.Item label="Repayment Type">{client.repaymentType}</Descriptions.Item>
-              <Descriptions.Item label="Interest Type">{client.interestType}</Descriptions.Item>
+              <Descriptions.Item label="Collection Time">
+                {client?.collectionTime ? dayjs(client.collectionTime, 'HH:mm:ss').format('hh:mm A') : '-'}
+              </Descriptions.Item>
               <Descriptions.Item label="Status">
                 <Tag color={client.status === 'active' ? 'blue' : client.status === 'paid' ? 'green' : 'red'}>
                   {client.status?.toUpperCase()}

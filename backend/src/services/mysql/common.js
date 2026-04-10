@@ -30,6 +30,23 @@ const toMysqlDateTime = (value) => {
 
 const normalizePhone = (value) => String(value || '').replace(/\D/g, '').slice(0, 10);
 
+const normalizeTimeString = (value) => {
+  if (value === undefined || value === null || value === '') return null;
+  const normalized = String(value).trim();
+  const match = normalized.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) return null;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const seconds = Number(match[3] || '00');
+
+  if (hours > 23 || minutes > 59 || seconds > 59) {
+    return null;
+  }
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+};
+
 const mapAdmin = (row) => {
   if (!row) return null;
 
@@ -88,7 +105,8 @@ const mapClient = (row) => {
     startDate: row.start_date,
     endDate: row.end_date,
     repaymentType: row.repayment_type,
-    interestType: row.interest_type,
+    collectionTime: normalizeTimeString(row.collection_time),
+    photo: row.photo || '',
     status: row.status,
     paymentDetails: mapClientPaymentDetails(row),
     createdBy: row.created_by,
@@ -278,6 +296,7 @@ module.exports = {
   normalizeNumber,
   toMysqlDateTime,
   normalizePhone,
+  normalizeTimeString,
   mapAdmin,
   mapClient,
   mapInvoice,

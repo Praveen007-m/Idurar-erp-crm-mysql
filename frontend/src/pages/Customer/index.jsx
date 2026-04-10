@@ -47,10 +47,11 @@ export default function Customer() {
 
   return (
     <CrudModule
-      createForm={() => <CustomerForm />}
-      updateForm={() => <CustomerForm isUpdateForm={true} />}
+      createForm={(props) => <CustomerForm {...props} />}
+      updateForm={(props) => <CustomerForm {...props} isUpdateForm={true} />}
       config={config}
       extra={extra}
+      withUpload
     />
   );
 }

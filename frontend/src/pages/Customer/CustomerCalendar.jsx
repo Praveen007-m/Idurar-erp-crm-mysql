@@ -5,12 +5,12 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeftOutlined, CalendarOutlined, UserOutlined,
+  ArrowLeftOutlined, CalendarOutlined,
   DollarOutlined, CheckCircleOutlined, ClockCircleOutlined,
   ExclamationCircleOutlined, LeftOutlined, RightOutlined,
 } from '@ant-design/icons';
 import {
-  Avatar, Badge, Button, Calendar, Card, Col, Row,
+  Badge, Button, Calendar, Card, Col, Row,
   Space, Spin, Tag, Typography, Modal, Form, Grid, Descriptions,
 } from 'antd';
 import { App } from 'antd';
@@ -26,6 +26,8 @@ import { useMoney, useDate } from '@/settings';
 import { request } from '@/request';
 import { repaymentStatusColor } from '@/utils/repaymentStatusColor';
 import RepaymentForm from '@/forms/RepaymentForm';
+import CustomerAvatar from '@/components/CustomerAvatar';
+import { getRepaymentCalendarStyle } from '@/utils/repaymentCalendarStyle';
 
 const { useBreakpoint } = Grid;
 
@@ -118,22 +120,35 @@ function WeekListView({ weekDays, eventsByDate, moneyFormatter, onEventClick }) 
             </div>
             {events.length > 0 ? (
               <div style={{ padding: '8px 12px', background: '#fff' }}>
-                {events.map((event) => (
-                  <div key={event.id} onClick={() => onEventClick(event.repayment)}
-                    style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '10px 12px', marginBottom: 6, borderRadius: 8, cursor: 'pointer',
-                      background: `${event.color}18`, border: `1px solid ${event.color}55`,
-                    }}
-                  >
-                    <span style={{ fontWeight: 600, fontSize: 14, color: event.color }}>
-                      {moneyFormatter({ amount: event.repayment.amount })}
-                    </span>
-                    <Tag color={event.color} style={{ borderRadius: 20, fontSize: 11, margin: 0 }}>
-                      {event.status.replace(/-|_/g, ' ').toUpperCase()}
-                    </Tag>
-                  </div>
-                ))}
+                {events.map((event) => {
+                  const calendarStyle = getRepaymentCalendarStyle(event.repayment, event.status);
+                  return (
+                    <div
+                      key={event.id}
+                      onClick={() => onEventClick(event.repayment)}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '10px 12px',
+                        marginBottom: 6,
+                        borderRadius: 8,
+                        cursor: 'pointer',
+                        ...calendarStyle.style,
+                      }}
+                    >
+                      <span style={{ fontWeight: 600, fontSize: 14, color: calendarStyle.style.color }}>
+                        {moneyFormatter({ amount: event.repayment.amount })}
+                      </span>
+                      <Tag
+                        color={calendarStyle.isToday ? '#1677ff' : event.color}
+                        style={{ borderRadius: 20, fontSize: 11, margin: 0 }}
+                      >
+                        {event.status.replace(/-|_/g, ' ').toUpperCase()}
+                      </Tag>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div style={{ padding: '10px 14px', color: '#bfbfbf', fontSize: 13 }}>No repayments</div>
@@ -159,9 +174,6 @@ export default function CustomerCalendar() {
   const { notification } = App.useApp();
 
   const { result: client, isLoading: isClientLoading } = useSelector(selectReadItem);
-
-  // DEBUGGING: Log the raw payload from API
-  console.log('[DEBUG] Full Client Data Payload:', client);
 
   const [repayments, setRepayments] = useState([]);
   const [isRepaymentsLoading, setIsRepaymentsLoading] = useState(false);
@@ -260,10 +272,10 @@ export default function CustomerCalendar() {
 
   // ── Format payload for submit ─────────────────────────────────────────────
   const formatPayload = (values) => {
-    const amountPaid = values.amountPaid !== undefined 
-      ? values.amountPaid 
+    const amountPaid = values.amountPaid !== undefined
+      ? values.amountPaid
       : (editingRepayment?.amountPaid ?? 0);
-    
+
     return {
       ...values,
       amountPaid: (['paid', 'late'].includes(values.status) && !amountPaid)
@@ -356,7 +368,12 @@ export default function CustomerCalendar() {
           <Row gutter={[12, 12]} align="middle">
             <Col xs={24} sm={8}>
               <Space>
-                <Avatar size={isMobile ? 40 : 48} icon={<UserOutlined />} style={{ background: BOX_BORDER, flexShrink: 0 }} />
+                {/* ✅ FIX: pass client.photo — mapClient returns photo: row.photo || '' */}
+                <CustomerAvatar
+                  photo={client?.photo || ''}
+                  name={client?.name}
+                  size={isMobile ? 40 : 48}
+                />
                 <div>
                   <Typography.Text type="secondary" style={{ fontSize: 11 }}>{translate('Client')}</Typography.Text>
                   <div style={{ fontWeight: 700, fontSize: isMobile ? 15 : 17 }}>{client?.name || '—'}</div>
@@ -521,9 +538,9 @@ export default function CustomerCalendar() {
                       onClick={() => dayEvents.length && handleDateClick(date)}
                       style={{
                         minHeight: 100, padding: 6, borderRadius: 8,
-                        border: dayEvents.length ? '1px solid rgba(40,167,171,0.28)'
-                          : isToday ? `2px solid ${BOX_BORDER}` : '1px solid #f0f0f0',
-                        background: dayEvents.length ? '#fcffff' : '#ffffff',
+                        border: isToday ? '1px solid #1677ff'
+                          : dayEvents.length ? '1px solid rgba(40,167,171,0.28)' : '1px solid #f0f0f0',
+                        background: isToday ? '#e6f4ff' : dayEvents.length ? '#fcffff' : '#ffffff',
                         cursor: dayEvents.length ? 'pointer' : 'default',
                       }}
                     >
@@ -544,10 +561,14 @@ export default function CustomerCalendar() {
                       <Space direction="vertical" size={2} style={{ width: '100%', marginTop: 4 }}>
                         {visible.map((event) => (
                           <div key={event.id} style={{
-                            padding: '3px 6px', borderRadius: 4,
-                            background: event.color, color: '#fff',
-                            fontSize: 11, fontWeight: 500,
-                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center',
+                            ...getRepaymentCalendarStyle(event.repayment, event.status).style,
+                            padding: '3px 6px',
+                            borderRadius: 4,
+                            fontSize: 11,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            textAlign: 'center',
                           }}>
                             {moneyFormatter({ amount: event.repayment.amount })}
                           </div>
@@ -606,22 +627,54 @@ export default function CustomerCalendar() {
         >
           {client && (
             <>
-              <Descriptions title={<Typography.Text type="secondary">BASIC INFO</Typography.Text>} bordered column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }} style={{ marginBottom: 20 }}>
+              <Descriptions
+                title={<Typography.Text type="secondary">BASIC INFO</Typography.Text>}
+                bordered
+                column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}
+                style={{ marginBottom: 20 }}
+              >
+                <Descriptions.Item label="Photo">
+                  {/* ✅ FIX: pass size=72 and both photo + name so preview works on click */}
+                  <CustomerAvatar
+                    photo={client.photo || ''}
+                    name={client.name}
+                    size={72}
+                  />
+                </Descriptions.Item>
                 <Descriptions.Item label="Name">{client.name}</Descriptions.Item>
                 <Descriptions.Item label="Phone">{client.phone}</Descriptions.Item>
                 <Descriptions.Item label="Email">{client.email || '-'}</Descriptions.Item>
                 <Descriptions.Item label="Address">{client.address || '-'}</Descriptions.Item>
-                <Descriptions.Item label="Assigned Staff">{client.assigned?.name || 'Unknown Staff'}</Descriptions.Item>
+                <Descriptions.Item label="Assigned Staff">
+                  {client.assigned?.name || 'Unknown Staff'}
+                </Descriptions.Item>
               </Descriptions>
 
-              <Descriptions title={<Typography.Text type="secondary">LOAN INFO</Typography.Text>} bordered column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }} style={{ marginBottom: 20 }}>
+              <Descriptions
+                title={<Typography.Text type="secondary">LOAN INFO</Typography.Text>}
+                bordered
+                column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}
+                style={{ marginBottom: 20 }}
+              >
                 <Descriptions.Item label="Loan Amount">{moneyFormatter({ amount: client.loanAmount })}</Descriptions.Item>
                 <Descriptions.Item label="Interest Rate">{client.interestRate}%</Descriptions.Item>
                 <Descriptions.Item label="Term">{client.term}</Descriptions.Item>
-                <Descriptions.Item label="Start Date">{client?.startDate && dayjs(client.startDate).isValid() ? dayjs(client.startDate).format(dateFormat) : '-'}</Descriptions.Item>
-                <Descriptions.Item label="Ending Date">{client?.endDate && dayjs(client.endDate).isValid() ? dayjs(client.endDate).format(dateFormat) : '-'}</Descriptions.Item>
+                <Descriptions.Item label="Start Date">
+                  {client?.startDate && dayjs(client.startDate).isValid()
+                    ? dayjs(client.startDate).format(dateFormat)
+                    : '-'}
+                </Descriptions.Item>
+                <Descriptions.Item label="Ending Date">
+                  {client?.endDate && dayjs(client.endDate).isValid()
+                    ? dayjs(client.endDate).format(dateFormat)
+                    : '-'}
+                </Descriptions.Item>
                 <Descriptions.Item label="Repayment Type">{client.repaymentType}</Descriptions.Item>
-                <Descriptions.Item label="Interest Type">{client.interestType}</Descriptions.Item>
+                <Descriptions.Item label="Collection Time">
+                  {client?.collectionTime
+                    ? dayjs(client.collectionTime, 'HH:mm:ss').format('hh:mm A')
+                    : '-'}
+                </Descriptions.Item>
                 <Descriptions.Item label="Status">
                   <Tag color={client.status === 'active' ? 'blue' : client.status === 'paid' ? 'green' : 'red'}>
                     {client.status?.toUpperCase()}
@@ -641,13 +694,11 @@ export default function CustomerCalendar() {
                   const bankName = pd.bankName || client.bankName;
                   const accountNumber = pd.accountNumber || client.accountNumber;
                   const ifscCode = pd.ifscCode || client.ifscCode;
-                  const accountHolderName =
-                    pd.accountHolderName || client.accountHolderName;
+                  const accountHolderName = pd.accountHolderName || client.accountHolderName;
 
                   const hasBank = !!(bankName || accountNumber || ifscCode);
                   const hasUPI = !!upiId;
 
-                  // ❌ Nothing stored → Cash
                   if (!hasBank && !hasUPI) {
                     return (
                       <Descriptions.Item label="Payment Mode">
@@ -656,56 +707,38 @@ export default function CustomerCalendar() {
                     );
                   }
 
-                  // ⭐ Build ONE payment mode label
                   const modes = [];
-                  // if (hasBank) modes.push("Bank Transfer");
-                  if (hasUPI) modes.push("UPI");
+                  if (hasUPI) modes.push('UPI');
 
                   return (
                     <>
-                      {/* ⭐ ONE Payment Mode row */}
                       <Descriptions.Item label="Payment Mode">
                         {modes.map((m) => (
-                          <Tag key={m} color={m === "UPI" ? "purple" : "blue"}>
+                          <Tag key={m} color={m === 'UPI' ? 'purple' : 'blue'}>
                             {m}
                           </Tag>
                         ))}
                       </Descriptions.Item>
 
-                      {/* ⭐ Bank details */}
                       {hasBank && (
                         <>
                           {bankName && (
-                            <Descriptions.Item label="Bank Name">
-                              {bankName}
-                            </Descriptions.Item>
+                            <Descriptions.Item label="Bank Name">{bankName}</Descriptions.Item>
                           )}
-
                           {accountHolderName && (
-                            <Descriptions.Item label="Account Holder">
-                              {accountHolderName}
-                            </Descriptions.Item>
+                            <Descriptions.Item label="Account Holder">{accountHolderName}</Descriptions.Item>
                           )}
-
                           {accountNumber && (
-                            <Descriptions.Item label="Account Number">
-                              {accountNumber}
-                            </Descriptions.Item>
+                            <Descriptions.Item label="Account Number">{accountNumber}</Descriptions.Item>
                           )}
-
                           {ifscCode && (
-                            <Descriptions.Item label="IFSC Code">
-                              {ifscCode}
-                            </Descriptions.Item>
+                            <Descriptions.Item label="IFSC Code">{ifscCode}</Descriptions.Item>
                           )}
                         </>
                       )}
 
-                      {/* ⭐ UPI details */}
                       {hasUPI && (
-                        <Descriptions.Item label="UPI ID">
-                          {upiId}
-                        </Descriptions.Item>
+                        <Descriptions.Item label="UPI ID">{upiId}</Descriptions.Item>
                       )}
                     </>
                   );

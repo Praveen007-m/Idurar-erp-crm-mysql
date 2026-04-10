@@ -23,7 +23,6 @@ const buildInstallmentSchedule = ({
   term,
   startDate,
   repaymentType,
-  interestType,
   createdBy,
 }) => {
   const installmentCount = Number.parseInt(term, 10);
@@ -51,30 +50,7 @@ const buildInstallmentSchedule = ({
   );
 
   const principalPerInstallment = principal / installmentCount;
-  const normalizedInterestType = String(interestType || 'reducing').trim().toLowerCase();
   const installments = [];
-
-  if (normalizedInterestType === 'flat') {
-    const totalInterest = principal * monthlyRate * totalMonths;
-    const interestPerInstallment = totalInterest / installmentCount;
-    const installmentAmount = principalPerInstallment + interestPerInstallment;
-
-    for (let index = 1; index <= installmentCount; index += 1) {
-      installments.push({
-        client: clientId,
-        date: moment(startDate).add(index, durationUnit).toDate(),
-        amount: roundCurrency(installmentAmount),
-        principal: roundCurrency(principalPerInstallment),
-        interest: roundCurrency(interestPerInstallment),
-        amountPaid: 0,
-        remainingBalance: roundCurrency(installmentAmount),
-        status: 'not_started',
-        createdBy,
-      });
-    }
-
-    return installments;
-  }
 
   const periodRate = periodsPerMonth > 0 ? monthlyRate / periodsPerMonth : monthlyRate;
   let outstanding = principal;
